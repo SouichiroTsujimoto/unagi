@@ -1,0 +1,41 @@
+package about
+
+import "github.com/SouichiroTsujimoto/unigo-template/internal/web/layout"
+
+templ Page() {
+	@layout.Document("About · Unigo", "about") {
+		<main class="flex flex-col gap-10">
+			<header class="space-y-3">
+				<h1 class="text-xl font-semibold tracking-tight">About</h1>
+				<p class="text-base-content/55 text-[15px] leading-relaxed">
+					このページは、フルページの HTML ルーティングを試すための最小サンプルです。
+				</p>
+			</header>
+
+			<section class="space-y-4" aria-labelledby="routing-title">
+				<h2 id="routing-title" class="text-base font-semibold tracking-tight">Routing</h2>
+				<p class="text-base-content/55 text-[15px] leading-relaxed">
+					route は
+					<code class="text-base-content/70">internal/web/router.go</code>
+					に明示的に登録します。
+				</p>
+				<p class="text-base-content/55 text-[15px] leading-relaxed">
+					ページ本体は
+					<code class="text-base-content/70">{ "internal/web/<area>" }</code>
+					に置き、共通のドキュメントシェルは
+					<code class="text-base-content/70">internal/web/layout</code>
+					に閉じます。
+				</p>
+			</section>
+
+			<section class="space-y-4" aria-labelledby="next-title">
+				<h2 id="next-title" class="text-base font-semibold tracking-tight">次のページを足すとき</h2>
+				<ol class="text-base-content/55 list-decimal space-y-2 pl-5 text-[15px] leading-relaxed">
+					<li><code class="text-base-content/70">{ "internal/web/<area>" }</code> に handler と templ を追加する</li>
+					<li><code class="text-base-content/70">internal/app</code> で依存関係を組み立てる</li>
+					<li><code class="text-base-content/70">router.go</code> へ route を登録する</li>
+				</ol>
+			</section>
+		</main>
+	}
+}

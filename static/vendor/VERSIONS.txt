@@ -1,0 +1,5 @@
+# Vendored island runtime (pinned). Re-fetch with: just vendor-islands
+is-land=@11ty/is-land@5.0.1
+preact=preact@10.26.4
+htm=htm@3.1.1
+preact-custom-element=preact-custom-element@4.3.0

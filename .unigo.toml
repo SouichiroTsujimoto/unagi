@@ -1,0 +1,37 @@
+# Project defaults for `just run` / listen banner.
+# CLI flags and UNIGO_* env vars override these values.
+
+[dev]
+logo = true
+tui = true
+
+[db]
+# driver: sqlite | postgres
+driver = "sqlite"
+dsn = "app.db"
+# Example Cloud SQL / Postgres:
+# driver = "postgres"
+# dsn = "postgres://user:pass@localhost:5432/unigo?sslmode=require"
+
+[banner]
+# Optional source image for the listen-banner ASCII logo.
+# When set, `just logo` (or `just run` when ASCII is missing/stale) writes
+# sibling <name>-ascii.txt (+ .sha256) via ascii-image-converter.
+# Commit the image, ascii, and sha256. Embedded default logo is never deleted.
+# image = "brand/logo.png"
+
+# Display order is preserved. Use "" for a blank spacer line.
+# Keys: version go templ tailwindcss daisyui air mode db css git url pid
+fields = [
+  "version",
+  "go",
+  "templ",
+  "",
+  "mode",
+  "db",
+  "css",
+  "git",
+  "",
+  "url",
+  "pid",
+]

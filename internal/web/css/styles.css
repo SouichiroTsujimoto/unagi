@@ -1,0 +1,32 @@
+@import "tailwindcss";
+
+@source not "../../../tools/tailwindcss";
+@source not "../../../tools/daisyui{,*}.mjs";
+
+/* Toggle: --default = OFF, --prefersdark = ON. Use two different theme names.
+   Example: cyberpunk --default, dark --prefersdark */
+@plugin "../../../tools/daisyui.mjs" {
+	themes: bumblebee --default, black --prefersdark;
+	logs: false;
+}
+
+@source "../**/*.{templ,go}";
+
+@layer base {
+	html {
+		scroll-behavior: smooth;
+		/* Browser native UI (scrollbars, form controls) — not daisyUI theme names. */
+		color-scheme: light dark;
+	}
+
+	@media (prefers-reduced-motion: reduce) {
+		html {
+			scroll-behavior: auto;
+		}
+	}
+
+	body {
+		background-color: var(--color-base-100);
+		color: var(--color-base-content);
+	}
+}

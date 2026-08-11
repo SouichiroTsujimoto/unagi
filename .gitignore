@@ -1,0 +1,17 @@
+# Build outputs
+/bin/
+/tmp/
+
+# Local toolchain downloads (Tailwind standalone CLI, daisyUI plugins)
+/tools/
+/node_modules/
+
+# Runtime / local data
+*.db
+*.db-*
+.certmagic/
+.env
+.env.*
+
+# OS / editor noise
+.DS_Store

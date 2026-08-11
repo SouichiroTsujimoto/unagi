@@ -1,0 +1,66 @@
+package home
+
+import (
+	"github.com/SouichiroTsujimoto/unigo-template/internal/feature/account"
+	"github.com/SouichiroTsujimoto/unigo-template/internal/web/layout"
+)
+
+templ Page(accounts []account.Account) {
+	@layout.Document("Unigo", "home") {
+		<main class="flex flex-col gap-16">
+			<header class="space-y-4">
+				<div class="flex items-center gap-3">
+					<img
+						src="/static/go-chan-5.png"
+						alt=""
+						width="64"
+						height="64"
+						class="h-12 w-12 rounded-xl object-cover"
+						decoding="async"
+					/>
+					<h1 class="text-xl font-semibold tracking-tight">Unigo</h1>
+				</div>
+				<p class="text-base-content/55 text-[15px] leading-relaxed">
+					<span class="text-base-content font-medium">Island Architecture</span>を採用した、
+					<span class="text-base-content font-medium">ひとつのバイナリ</span>に収まる
+					<span class="text-base-content font-medium">full-stack Web アプリケーション</span>のテンプレートです。
+				</p>
+			</header>
+
+			<section class="space-y-5" aria-labelledby="stack-title">
+				<h2 id="stack-title" class="text-base font-semibold tracking-tight">Stack</h2>
+				<ul class="text-base-content/55 space-y-2 text-[15px]">
+					<li><span class="text-base-content font-medium">Echo</span> — HTTP ルーティング</li>
+					<li><span class="text-base-content font-medium">templ</span> — HTML テンプレート</li>
+					<li><span class="text-base-content font-medium">is-land / Preact</span> — Islands UI</li>
+					<li><span class="text-base-content font-medium">SQLite / Bun</span> — 組み込み DB と ORM</li>
+					<li><span class="text-base-content font-medium">CertMagic</span> — 自動 HTTPS</li>
+					<li><span class="text-base-content font-medium">Tailwind / daisyUI</span> — Utility CSS と UI</li>
+				</ul>
+			</section>
+
+			<section id="example" class="space-y-5 scroll-mt-8" aria-labelledby="example-title">
+				<div class="space-y-2">
+					<h2 id="example-title" class="text-base font-semibold tracking-tight">Accounts</h2>
+					<p class="text-base-content/55 text-[15px] leading-relaxed">
+						Island UI デモンストレーションです。SQLiteに保存されます。
+					</p>
+				</div>
+				<is-land on:visible>
+					<template data-island>
+						<account-panel accounts={ accountsJSON(accounts) }></account-panel>
+					</template>
+				</is-land>
+			</section>
+
+			<footer class="text-base-content/40 text-sm leading-relaxed">
+				<code class="text-base-content/55">internal/web/home</code>
+				, 
+				<code class="text-base-content/55">internal/web/islands</code>
+				, 
+				<code class="text-base-content/55">internal/feature/account</code>
+				が最小構成の実装例です。
+			</footer>
+		</main>
+	}
+}
