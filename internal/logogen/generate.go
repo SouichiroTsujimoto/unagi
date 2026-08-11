@@ -10,7 +10,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/SouichiroTsujimoto/unigo-template/internal/logogen/aicwrap"
+	"github.com/SouichiroTsujimoto/unagi/internal/logogen/aicwrap"
 )
 
 const (

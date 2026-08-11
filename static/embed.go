@@ -5,7 +5,7 @@ import (
 	"io/fs"
 )
 
-//go:embed app.css theme.js go-chan-*.png vendor
+//go:embed app.css theme.js *.png vendor
 var files embed.FS
 
 func FS() fs.FS {

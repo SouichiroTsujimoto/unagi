@@ -8,9 +8,9 @@ package about
 import "github.com/a-h/templ"
 import templruntime "github.com/a-h/templ/runtime"
 
-import "github.com/SouichiroTsujimoto/unigo-template/internal/web/layout"
+import "github.com/SouichiroTsujimoto/unagi/internal/web/layout"
 
-func Page() templ.Component {
+func Page(meta layout.PageMeta, site layout.Site) templ.Component {
 	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
 		if templ_7745c5c3_CtxErr := ctx.Err(); templ_7745c5c3_CtxErr != nil {
@@ -43,39 +43,99 @@ func Page() templ.Component {
 				}()
 			}
 			ctx = templ.InitializeContext(ctx)
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 1, "<main class=\"flex flex-col gap-10\"><header class=\"space-y-3\"><h1 class=\"text-xl font-semibold tracking-tight\">About</h1><p class=\"text-base-content/55 text-[15px] leading-relaxed\">このページは、フルページの HTML ルーティングを試すための最小サンプルです。</p></header><section class=\"space-y-4\" aria-labelledby=\"routing-title\"><h2 id=\"routing-title\" class=\"text-base font-semibold tracking-tight\">Routing</h2><p class=\"text-base-content/55 text-[15px] leading-relaxed\">route は <code class=\"text-base-content/70\">internal/web/router.go</code> に明示的に登録します。</p><p class=\"text-base-content/55 text-[15px] leading-relaxed\">ページ本体は <code class=\"text-base-content/70\">")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 1, "<main class=\"flex flex-col gap-10\"><header class=\"space-y-4\"><img src=\"/static/wuhu1sland-2.png\" alt=\"")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var3 string
-			templ_7745c5c3_Var3, templ_7745c5c3_Err = templ.JoinStringErrs("internal/web/<area>")
+			templ_7745c5c3_Var3, templ_7745c5c3_Err = templ.ResolveAttributeValue(site.Name)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `about/page.templ`, Line: 24, Col: 63}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `about/page.templ`, Line: 11, Col: 20}
 			}
-			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var3))
-			if templ_7745c5c3_Err != nil {
-				return templ_7745c5c3_Err
-			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 2, "</code> に置き、共通のドキュメントシェルは <code class=\"text-base-content/70\">internal/web/layout</code> に閉じます。</p></section><section class=\"space-y-4\" aria-labelledby=\"next-title\"><h2 id=\"next-title\" class=\"text-base font-semibold tracking-tight\">次のページを足すとき</h2><ol class=\"text-base-content/55 list-decimal space-y-2 pl-5 text-[15px] leading-relaxed\"><li><code class=\"text-base-content/70\">")
+			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var3)
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			var templ_7745c5c3_Var4 string
-			templ_7745c5c3_Var4, templ_7745c5c3_Err = templ.JoinStringErrs("internal/web/<area>")
-			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `about/page.templ`, Line: 34, Col: 67}
-			}
-			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var4))
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 2, "\" width=\"320\" height=\"320\" class=\"h-40 w-40 rounded-2xl object-cover\" decoding=\"async\"><div class=\"space-y-3\"><h1 class=\"text-xl font-semibold tracking-tight\">About</h1>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 3, "</code> に handler と templ を追加する</li><li><code class=\"text-base-content/70\">internal/app</code> で依存関係を組み立てる</li><li><code class=\"text-base-content/70\">router.go</code> へ route を登録する</li></ol></section></main>")
+			if site.Author != "" {
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 3, "<p class=\"text-base-content/55 text-[15px] leading-relaxed\"><span class=\"text-base-content font-medium\">")
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+				var templ_7745c5c3_Var4 string
+				templ_7745c5c3_Var4, templ_7745c5c3_Err = templ.JoinStringErrs(site.Author)
+				if templ_7745c5c3_Err != nil {
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `about/page.templ`, Line: 21, Col: 64}
+				}
+				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var4))
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 4, "</span> の個人技術ブログ <span class=\"text-base-content font-medium\">")
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+				var templ_7745c5c3_Var5 string
+				templ_7745c5c3_Var5, templ_7745c5c3_Err = templ.JoinStringErrs(site.Name)
+				if templ_7745c5c3_Err != nil {
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `about/page.templ`, Line: 23, Col: 62}
+				}
+				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var5))
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 5, "</span> です。</p>")
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+			}
+			if site.Description != "" {
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 6, "<p class=\"text-base-content/55 text-[15px] leading-relaxed\">")
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+				var templ_7745c5c3_Var6 string
+				templ_7745c5c3_Var6, templ_7745c5c3_Err = templ.JoinStringErrs(site.Description)
+				if templ_7745c5c3_Err != nil {
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `about/page.templ`, Line: 28, Col: 84}
+				}
+				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var6))
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 7, "</p>")
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+			} else if site.Author == "" {
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 8, "<p class=\"text-base-content/55 text-[15px] leading-relaxed\"><span class=\"text-base-content font-medium\">")
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+				var templ_7745c5c3_Var7 string
+				templ_7745c5c3_Var7, templ_7745c5c3_Err = templ.JoinStringErrs(site.Name)
+				if templ_7745c5c3_Err != nil {
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `about/page.templ`, Line: 31, Col: 62}
+				}
+				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var7))
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 9, "</span> は、個人用のミニマルな技術ブログです。</p>")
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+			}
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 10, "</div></header><section class=\"space-y-4\" aria-labelledby=\"writing-title\"><h2 id=\"writing-title\" class=\"text-base font-semibold tracking-tight\">書き方</h2><p class=\"text-base-content/55 text-[15px] leading-relaxed\">記事はZenn互換のMarkdownとして <code class=\"text-base-content/70\">articles/</code> に置き、画像は <code class=\"text-base-content/70\">images/</code> へ配置します。公開設定はfrontmatterの <code class=\"text-base-content/70\">published</code> と <code class=\"text-base-content/70\">published_at</code> で制御します。</p></section><section class=\"space-y-4\" aria-labelledby=\"subscribe-title\"><h2 id=\"subscribe-title\" class=\"text-base font-semibold tracking-tight\">購読</h2><p class=\"text-base-content/55 text-[15px] leading-relaxed\"><a href=\"/feed.xml\" class=\"link link-hover text-base-content\">RSS</a> から新着記事を購読できます。</p></section></main>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			return nil
 		})
-		templ_7745c5c3_Err = layout.Document("About · Unigo", "about").Render(templ.WithChildren(ctx, templ_7745c5c3_Var2), templ_7745c5c3_Buffer)
+		templ_7745c5c3_Err = layout.Document(meta).Render(templ.WithChildren(ctx, templ_7745c5c3_Var2), templ_7745c5c3_Buffer)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

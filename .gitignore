@@ -10,8 +10,10 @@
 *.db
 *.db-*
 .certmagic/
+/data/
 .env
 .env.*
+!.env.example
 
 # OS / editor noise
 .DS_Store

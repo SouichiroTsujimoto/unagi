@@ -7,15 +7,18 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/SouichiroTsujimoto/unigo-template/cmd/dev/internal/tui"
-	"github.com/SouichiroTsujimoto/unigo-template/internal/config"
-	"github.com/SouichiroTsujimoto/unigo-template/internal/db"
-	"github.com/SouichiroTsujimoto/unigo-template/internal/terminal"
+	"github.com/SouichiroTsujimoto/unagi/cmd/dev/internal/tui"
+	"github.com/SouichiroTsujimoto/unagi/internal/config"
+	"github.com/SouichiroTsujimoto/unagi/internal/db"
+	"github.com/SouichiroTsujimoto/unagi/internal/terminal"
 )
 
 // Development launcher: optional Bubble Tea TUI, or plain Air with streaming logs.
-// Precedence for logo/tui/db: CLI flag > UNIGO_* env > .unigo.toml > defaults.
+// Precedence for logo/tui/db: CLI flag > UNIGO_* env > .env > .unigo.toml > defaults.
+// Production bin/server does not load .env.
 func main() {
+	loadDotEnv()
+
 	file := config.Load()
 	logo := file.Logo()
 	useTUI := file.TUIEnabled()

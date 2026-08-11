@@ -1,66 +1,75 @@
 package home
 
 import (
-	"github.com/SouichiroTsujimoto/unigo-template/internal/feature/account"
-	"github.com/SouichiroTsujimoto/unigo-template/internal/web/layout"
+	"github.com/SouichiroTsujimoto/unagi/internal/feature/article"
+	"github.com/SouichiroTsujimoto/unagi/internal/web/layout"
 )
 
-templ Page(accounts []account.Account) {
-	@layout.Document("Unigo", "home") {
-		<main class="flex flex-col gap-16">
+templ Page(meta layout.PageMeta, site layout.Site, articles []article.Article) {
+	@layout.Document(meta) {
+		<main class="flex flex-col gap-12">
 			<header class="space-y-4">
 				<div class="flex items-center gap-3">
 					<img
-						src="/static/go-chan-5.png"
+						src="/static/wuhu1sland-1.png"
 						alt=""
 						width="64"
 						height="64"
 						class="h-12 w-12 rounded-xl object-cover"
 						decoding="async"
 					/>
-					<h1 class="text-xl font-semibold tracking-tight">Unigo</h1>
+					<div class="space-y-1">
+						<h1 class="text-xl font-semibold tracking-tight">{ site.Name }</h1>
+						if site.Description != "" {
+							<p class="text-base-content/55 text-[15px] leading-relaxed">{ site.Description }</p>
+						}
+					</div>
 				</div>
-				<p class="text-base-content/55 text-[15px] leading-relaxed">
-					<span class="text-base-content font-medium">Island Architecture</span>を採用した、
-					<span class="text-base-content font-medium">ひとつのバイナリ</span>に収まる
-					<span class="text-base-content font-medium">full-stack Web アプリケーション</span>のテンプレートです。
-				</p>
 			</header>
 
-			<section class="space-y-5" aria-labelledby="stack-title">
-				<h2 id="stack-title" class="text-base font-semibold tracking-tight">Stack</h2>
-				<ul class="text-base-content/55 space-y-2 text-[15px]">
-					<li><span class="text-base-content font-medium">Echo</span> — HTTP ルーティング</li>
-					<li><span class="text-base-content font-medium">templ</span> — HTML テンプレート</li>
-					<li><span class="text-base-content font-medium">is-land / Preact</span> — Islands UI</li>
-					<li><span class="text-base-content font-medium">SQLite / Bun</span> — 組み込み DB と ORM</li>
-					<li><span class="text-base-content font-medium">CertMagic</span> — 自動 HTTPS</li>
-					<li><span class="text-base-content font-medium">Tailwind / daisyUI</span> — Utility CSS と UI</li>
-				</ul>
+			<section class="space-y-6" aria-labelledby="posts-title">
+				<h2 id="posts-title" class="text-base font-semibold tracking-tight">記事</h2>
+				if len(articles) == 0 {
+					<p class="text-base-content/55 text-[15px] leading-relaxed">まだ公開記事がありません。</p>
+				} else {
+					<ul class="divide-y divide-base-content/10">
+						for _, post := range articles {
+							<li class="py-5 first:pt-0 last:pb-0">
+								<article class="space-y-2">
+									<a href={ templ.SafeURL(post.Path()) } class="group block space-y-2 focus-visible:outline-none">
+										<h3 class="text-[15px] font-medium tracking-tight group-hover:underline group-focus-visible:underline">
+											if post.Emoji != "" {
+												<span aria-hidden="true">{ post.Emoji }</span>
+												<span> </span>
+											}
+											{ post.Title }
+										</h3>
+										if !post.PublishedAt.IsZero() {
+											<time class="text-base-content/45 text-sm" datetime={ post.PublishedAt.Format("2006-01-02T15:04:05-07:00") }>
+												{ post.PublishedAt.Format("2006-01-02") }
+											</time>
+										}
+										if post.Summary != "" {
+											<p class="text-base-content/55 text-[15px] leading-relaxed">{ post.Summary }</p>
+										}
+									</a>
+									if len(post.Topics) > 0 {
+										<ul class="flex flex-wrap gap-2">
+											for _, topic := range post.Topics {
+												<li>
+													<a href={ templ.SafeURL(article.TopicPath(topic)) } class="badge badge-ghost badge-sm">{ topic }</a>
+												</li>
+											}
+										</ul>
+									}
+								</article>
+							</li>
+						}
+					</ul>
+				}
 			</section>
 
-			<section id="example" class="space-y-5 scroll-mt-8" aria-labelledby="example-title">
-				<div class="space-y-2">
-					<h2 id="example-title" class="text-base font-semibold tracking-tight">Accounts</h2>
-					<p class="text-base-content/55 text-[15px] leading-relaxed">
-						Island UI デモンストレーションです。SQLiteに保存されます。
-					</p>
-				</div>
-				<is-land on:visible>
-					<template data-island>
-						<account-panel accounts={ accountsJSON(accounts) }></account-panel>
-					</template>
-				</is-land>
-			</section>
-
-			<footer class="text-base-content/40 text-sm leading-relaxed">
-				<code class="text-base-content/55">internal/web/home</code>
-				, 
-				<code class="text-base-content/55">internal/web/islands</code>
-				, 
-				<code class="text-base-content/55">internal/feature/account</code>
-				が最小構成の実装例です。
-			</footer>
+			@brailleLab()
 		</main>
 	}
 }

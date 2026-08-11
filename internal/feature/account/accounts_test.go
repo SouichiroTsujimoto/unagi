@@ -6,8 +6,8 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/SouichiroTsujimoto/unigo-template/internal/feature/account"
-	"github.com/SouichiroTsujimoto/unigo-template/internal/db"
+	"github.com/SouichiroTsujimoto/unagi/internal/feature/account"
+	"github.com/SouichiroTsujimoto/unagi/internal/db"
 )
 
 func TestAccountsLifecycle(t *testing.T) {

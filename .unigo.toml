@@ -13,6 +13,12 @@ dsn = "app.db"
 # driver = "postgres"
 # dsn = "postgres://user:pass@localhost:5432/unigo?sslmode=require"
 
+[site]
+name = "unagi"
+description = "個人用のミニマルな技術ブログ"
+base_url = "http://localhost:8080"
+# author = "your name"
+
 [banner]
 # Optional source image for the listen-banner ASCII logo.
 # When set, `just logo` (or `just run` when ASCII is missing/stale) writes

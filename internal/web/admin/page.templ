@@ -1,0 +1,160 @@
+package admin
+
+import (
+	"github.com/SouichiroTsujimoto/unagi/internal/feature/adminauth"
+	"github.com/SouichiroTsujimoto/unagi/internal/feature/article"
+	"github.com/SouichiroTsujimoto/unagi/internal/web/layout"
+)
+
+templ shell(site layout.Site, title string, active string) {
+	@layout.Document(layout.PageMeta{
+		Title:       site.TitleWithSite(title),
+		Description: "管理画面",
+		Active:      active,
+		Wide:        true,
+	}) {
+		{ children... }
+	}
+}
+
+templ LoginPage(site layout.Site) {
+	@shell(site, "Login", "admin") {
+		<main class="flex flex-col gap-8">
+			<header class="space-y-2">
+				<h1 class="text-xl font-semibold tracking-tight">Admin Login</h1>
+				<p class="text-base-content/55 text-[15px] leading-relaxed">
+					1Passwordなどのpasskeyでログインします。
+				</p>
+			</header>
+			<is-land on:idle>
+				<template data-island>
+					<admin-login></admin-login>
+				</template>
+			</is-land>
+		</main>
+	}
+}
+
+templ SetupPage(site layout.Site) {
+	@shell(site, "Setup", "admin") {
+		<main class="flex flex-col gap-8">
+			<header class="space-y-2">
+				<h1 class="text-xl font-semibold tracking-tight">初期設定</h1>
+				<p class="text-base-content/55 text-[15px] leading-relaxed">
+					bootstrap tokenとpasskeyで管理者を登録します。
+				</p>
+			</header>
+			<is-land on:idle>
+				<template data-island>
+					<admin-setup></admin-setup>
+				</template>
+			</is-land>
+		</main>
+	}
+}
+
+templ IndexPage(site layout.Site, items []article.Article, csrf string) {
+	@shell(site, "Articles", "admin") {
+		<main class="flex flex-col gap-8">
+			<header class="flex flex-wrap items-end justify-between gap-4">
+				<div class="space-y-1">
+					<h1 class="text-xl font-semibold tracking-tight">記事管理</h1>
+					<p class="text-base-content/55 text-[15px]">{ site.Name }</p>
+				</div>
+				<div class="flex flex-wrap items-center gap-2">
+					<a href="/admin/passkeys" class="btn btn-ghost btn-sm">Passkeys</a>
+					<a href="/admin/articles/new" class="btn btn-primary btn-sm">新規</a>
+					<form method="post" action="/admin/logout">
+						<input type="hidden" name="csrf" value={ csrf }/>
+						<button class="btn btn-ghost btn-sm" type="submit">Logout</button>
+					</form>
+				</div>
+			</header>
+			if len(items) == 0 {
+				<p class="text-base-content/55 text-[15px]">記事がありません。</p>
+			} else {
+				<ul class="divide-y divide-base-content/10">
+					for _, item := range items {
+						<li class="flex items-start justify-between gap-4 py-4 first:pt-0 last:pb-0">
+							<div class="space-y-1">
+								<a href={ templ.SafeURL("/admin/articles/" + itoa(item.ID)) } class="font-medium hover:underline">
+									if item.Emoji != "" {
+										{ item.Emoji + " " }
+									}
+									{ item.Title }
+								</a>
+								<p class="text-base-content/45 text-sm">
+									{ item.Slug } · { item.Status }
+									if !item.PublishedAt.IsZero() {
+										{ " · " + item.PublishedAt.Format("2006-01-02 15:04") }
+									}
+								</p>
+							</div>
+						</li>
+					}
+				</ul>
+			}
+		</main>
+	}
+}
+
+templ EditPage(site layout.Site, item article.Article, csrf string, isNew bool) {
+	@shell(site, editTitle(item, isNew), "admin") {
+		<main class="flex flex-col gap-6">
+			<header class="flex flex-wrap items-end justify-between gap-4">
+				<div class="space-y-1">
+					<p class="text-sm text-base-content/45"><a href="/admin" class="hover:underline">記事管理</a> / 編集</p>
+					<h1 class="text-xl font-semibold tracking-tight">{ editTitle(item, isNew) }</h1>
+				</div>
+				<a href="/admin" class="btn btn-ghost btn-sm">戻る</a>
+			</header>
+			<is-land on:visible>
+				<template data-island>
+					<article-editor
+						csrf={ csrf }
+						article-id={ itoa(item.ID) }
+						is-new={ boolAttr(isNew) }
+						slug={ item.Slug }
+						title={ item.Title }
+						emoji={ item.Emoji }
+						type={ item.Type }
+						topics={ joinTopics(item.Topics) }
+						body-md={ item.BodyMD }
+						published-at={ formatPublishedAt(item) }
+						published={ boolAttr(item.Published) }
+					></article-editor>
+				</template>
+			</is-land>
+		</main>
+	}
+}
+
+templ PasskeysPage(site layout.Site, creds []adminauth.Credential, csrf string) {
+	@shell(site, "Passkeys", "admin") {
+		<main class="flex flex-col gap-8">
+			<header class="flex flex-wrap items-center justify-between gap-4">
+				<h1 class="text-xl font-semibold tracking-tight">Passkeys</h1>
+				<a href="/admin" class="btn btn-ghost btn-sm">戻る</a>
+			</header>
+			if len(creds) == 0 {
+				<p class="text-base-content/55 text-[15px]">登録済みのpasskeyはありません。</p>
+			} else {
+				<ul class="divide-y divide-base-content/10">
+					for _, cred := range creds {
+						<li class="flex items-center justify-between gap-4 py-4 first:pt-0 last:pb-0">
+							<div class="space-y-1">
+								<p class="font-medium">{ cred.DisplayName }</p>
+								<p class="text-base-content/45 text-sm">{ cred.CreatedAt.Format("2006-01-02 15:04") }</p>
+							</div>
+						</li>
+					}
+				</ul>
+			}
+			<is-land on:idle>
+				<template data-island>
+					<admin-passkeys csrf={ csrf }></admin-passkeys>
+				</template>
+			</is-land>
+		</main>
+	}
+}

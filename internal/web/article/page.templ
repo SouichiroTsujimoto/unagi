@@ -1,0 +1,93 @@
+package article
+
+import (
+	"github.com/SouichiroTsujimoto/unagi/internal/feature/article"
+	"github.com/SouichiroTsujimoto/unagi/internal/web/layout"
+)
+
+templ ShowPage(meta layout.PageMeta, post article.Article) {
+	@layout.Document(meta) {
+		<main>
+			<article class="article-body space-y-8">
+				<header class="space-y-6 border-b border-base-content/10 pb-8">
+					<p class="text-base-content/45 text-sm">
+						<a href="/" class="hover:text-base-content hover:underline">記事</a>
+						<span aria-hidden="true"> / </span>
+						<span>{ post.Title }</span>
+					</p>
+					<h1 class="text-2xl font-semibold tracking-tight leading-snug">
+						if post.Emoji != "" {
+							<span aria-hidden="true">{ post.Emoji }</span>
+							<span> </span>
+						}
+						{ post.Title }
+					</h1>
+					<div class="flex flex-wrap items-center gap-3 text-sm text-base-content/45">
+						if !post.PublishedAt.IsZero() {
+							<time datetime={ post.PublishedAt.Format("2006-01-02T15:04:05-07:00") }>
+								{ post.PublishedAt.Format("2006年1月2日") }
+							</time>
+						}
+						if len(post.Topics) > 0 {
+							<ul class="flex flex-wrap gap-2">
+								for _, topic := range post.Topics {
+									<li>
+										<a href={ templ.SafeURL(article.TopicPath(topic)) } class="badge badge-ghost badge-sm">{ topic }</a>
+									</li>
+								}
+							</ul>
+						}
+					</div>
+				</header>
+				<div class="article-prose">
+					@templ.Raw(post.HTML)
+				</div>
+			</article>
+		</main>
+	}
+}
+
+templ TagPage(meta layout.PageMeta, tag string, articles []article.Article) {
+	@layout.Document(meta) {
+		<main class="flex flex-col gap-10">
+			<header class="space-y-3">
+				<p class="text-base-content/45 text-sm">
+					<a href="/" class="hover:text-base-content hover:underline">記事</a>
+					<span aria-hidden="true"> / </span>
+					<span>{ tag }</span>
+				</p>
+				<h1 class="text-xl font-semibold tracking-tight">{ tag }</h1>
+				<p class="text-base-content/55 text-[15px] leading-relaxed">
+					トピック「{ tag }」の記事一覧です。
+				</p>
+			</header>
+
+			if len(articles) == 0 {
+				<p class="text-base-content/55 text-[15px]">該当する記事はまだありません。</p>
+			} else {
+				<ul class="divide-y divide-base-content/10">
+					for _, post := range articles {
+						<li class="py-5 first:pt-0 last:pb-0">
+							<article class="space-y-2">
+								<a href={ templ.SafeURL(post.Path()) } class="group block space-y-2 focus-visible:outline-none">
+									<h2 class="text-[15px] font-medium tracking-tight group-hover:underline group-focus-visible:underline">
+										if post.Emoji != "" {
+											<span aria-hidden="true">{ post.Emoji }</span>
+											<span> </span>
+										}
+										{ post.Title }
+									</h2>
+									if !post.PublishedAt.IsZero() {
+										<time class="text-base-content/45 text-sm" datetime={ post.PublishedAt.Format("2006-01-02T15:04:05-07:00") }>
+											{ post.PublishedAt.Format("2006-01-02") }
+										</time>
+									}
+								</a>
+							</article>
+						</li>
+					}
+				</ul>
+			}
+		</main>
+	}
+}

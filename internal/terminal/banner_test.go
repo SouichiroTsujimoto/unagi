@@ -6,7 +6,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/SouichiroTsujimoto/unigo-template/internal/config"
+	"github.com/SouichiroTsujimoto/unagi/internal/config"
 )
 
 func TestFilterBannerFields(t *testing.T) {

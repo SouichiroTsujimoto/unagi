@@ -4,19 +4,29 @@ import (
 	"log/slog"
 
 	"github.com/labstack/echo/v4"
+	"github.com/SouichiroTsujimoto/unagi/internal/web/layout"
 )
 
 type Handler struct {
-	log *slog.Logger
+	site layout.Site
+	log  *slog.Logger
 }
 
-func New(log *slog.Logger) *Handler {
-	return &Handler{log: log}
+func New(site layout.Site, log *slog.Logger) *Handler {
+	return &Handler{site: site, log: log}
 }
 
 func (handler *Handler) Show(c echo.Context) error {
+	meta := layout.PageMeta{
+		Title:       handler.site.TitleWithSite("About"),
+		Description: handler.site.Description,
+		Canonical:   handler.site.AbsoluteURL("/about"),
+		OGImage:     handler.site.AbsoluteURL("/static/wuhu1sland-2.png"),
+		OGType:      "website",
+		Active:      "about",
+	}
 	c.Response().Header().Set(echo.HeaderContentType, echo.MIMETextHTMLCharsetUTF8)
-	if err := Page().Render(c.Request().Context(), c.Response()); err != nil {
+	if err := Page(meta, handler.site).Render(c.Request().Context(), c.Response()); err != nil {
 		handler.log.Error("render about", "err", err)
 		return err
 	}

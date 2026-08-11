@@ -13,19 +13,19 @@ func TestRenameModule(t *testing.T) {
 	if err := os.MkdirAll(src, 0o755); err != nil {
 		t.Fatal(err)
 	}
-	goMod := "module github.com/SouichiroTsujimoto/unigo-template\n\ngo 1.26.0\n"
+	goMod := "module github.com/SouichiroTsujimoto/unagi\n\ngo 1.26.0\n"
 	if err := os.WriteFile(filepath.Join(root, "go.mod"), []byte(goMod), 0o644); err != nil {
 		t.Fatal(err)
 	}
 	appGo := `package app
 
-import "github.com/SouichiroTsujimoto/unigo-template/internal/feature/account"
+import "github.com/SouichiroTsujimoto/unagi/internal/feature/account"
 `
 	if err := os.WriteFile(filepath.Join(src, "app.go"), []byte(appGo), 0o644); err != nil {
 		t.Fatal(err)
 	}
 	templGo := `package home
-import "github.com/SouichiroTsujimoto/unigo-template/internal/feature/account"
+import "github.com/SouichiroTsujimoto/unagi/internal/feature/account"
 `
 	if err := os.WriteFile(filepath.Join(src, "page_templ.go"), []byte(templGo), 0o644); err != nil {
 		t.Fatal(err)

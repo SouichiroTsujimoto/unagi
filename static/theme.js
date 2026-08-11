@@ -1,5 +1,5 @@
 (() => {
-  const KEY = "unigo-theme";
+  const KEY = "unagi-theme";
   const root = document.documentElement;
   const light = root.getAttribute("data-theme-light") || "light";
   const dark = root.getAttribute("data-theme-dark") || "dark";

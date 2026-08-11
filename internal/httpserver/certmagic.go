@@ -7,6 +7,9 @@ import (
 )
 
 func runHTTPS(handler http.Handler, config Config) error {
+	if config.CertMagicStorage != "" {
+		certmagic.Default.Storage = &certmagic.FileStorage{Path: config.CertMagicStorage}
+	}
 	if config.ACMEEmail != "" {
 		certmagic.DefaultACME.Email = config.ACMEEmail
 	}

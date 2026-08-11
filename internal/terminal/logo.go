@@ -7,9 +7,10 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"regexp"
 	"strings"
 
-	"github.com/SouichiroTsujimoto/unigo-template/internal/config"
+	"github.com/SouichiroTsujimoto/unagi/internal/config"
 )
 
 //go:embed logo-ascii.txt
@@ -64,6 +65,30 @@ func embeddedASCIILogo() string {
 		return ""
 	}
 	return strings.TrimRight(string(data), "\n")
+}
+
+var ansiEscapeRE = regexp.MustCompile(`\x1b\[[0-9;]*m`)
+
+// PlainASCIILogo returns the banner braille art with ANSI colors stripped.
+func PlainASCIILogo() string {
+	return strings.TrimRight(ansiEscapeRE.ReplaceAllString(ASCIILogo(), ""), "\n")
+}
+
+// PlainASCIILogoLines returns non-empty lines of PlainASCIILogo.
+func PlainASCIILogoLines() []string {
+	plain := PlainASCIILogo()
+	if plain == "" {
+		return nil
+	}
+	raw := strings.Split(plain, "\n")
+	out := make([]string, 0, len(raw))
+	for _, line := range raw {
+		if strings.TrimSpace(line) == "" {
+			continue
+		}
+		out = append(out, line)
+	}
+	return out
 }
 
 func loadCustomASCIILogo(imagePath string) string {

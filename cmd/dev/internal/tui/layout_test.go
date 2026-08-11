@@ -6,7 +6,7 @@ import (
 
 	"github.com/charmbracelet/bubbles/viewport"
 	"github.com/charmbracelet/lipgloss"
-	"github.com/SouichiroTsujimoto/unigo-template/internal/db"
+	"github.com/SouichiroTsujimoto/unagi/internal/db"
 )
 
 func TestShouldUsePaneSwitch(t *testing.T) {

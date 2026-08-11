@@ -5,8 +5,8 @@ import (
 	"os"
 	"strings"
 
-	"github.com/SouichiroTsujimoto/unigo-template/internal/config"
-	"github.com/SouichiroTsujimoto/unigo-template/internal/logogen"
+	"github.com/SouichiroTsujimoto/unagi/internal/config"
+	"github.com/SouichiroTsujimoto/unagi/internal/logogen"
 )
 
 func main() {

@@ -1,10 +1,9 @@
 package layout
 
-import "github.com/SouichiroTsujimoto/unigo-template/internal/web/css"
+import "github.com/SouichiroTsujimoto/unagi/internal/web/css"
 
 // Document is the shared HTML shell for full-page routes.
-// active is "home" or "about" for the main nav highlight.
-templ Document(title string, active string) {
+templ Document(meta PageMeta) {
 	<!DOCTYPE html>
 	<html
 		lang="ja"
@@ -16,7 +15,31 @@ templ Document(title string, active string) {
 			<meta charset="UTF-8"/>
 			<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 			<meta name="color-scheme" content="light dark"/>
-			<title>{ title }</title>
+			<title>{ meta.Title }</title>
+			if meta.Description != "" {
+				<meta name="description" content={ meta.Description }/>
+			}
+			if meta.Canonical != "" {
+				<link rel="canonical" href={ meta.Canonical }/>
+			}
+			<meta property="og:title" content={ meta.Title }/>
+			if meta.Description != "" {
+				<meta property="og:description" content={ meta.Description }/>
+			}
+			<meta property="og:type" content={ ogType(meta.OGType) }/>
+			if meta.Canonical != "" {
+				<meta property="og:url" content={ meta.Canonical }/>
+			}
+			if meta.OGImage != "" {
+				<meta property="og:image" content={ meta.OGImage }/>
+			}
+			<meta name="twitter:card" content="summary"/>
+			<meta name="twitter:title" content={ meta.Title }/>
+			if meta.Description != "" {
+				<meta name="twitter:description" content={ meta.Description }/>
+			}
+			<link rel="alternate" type="application/rss+xml" title="RSS" href="/feed.xml"/>
+			<link rel="icon" href="/static/wuhu1sland-1.png" type="image/png"/>
 			<script src="/static/theme.js"></script>
 			<link rel="stylesheet" href="/static/app.css"/>
 			<script type="importmap">
@@ -36,15 +59,15 @@ templ Document(title string, active string) {
 			}
 		</head>
 		<body class="bg-base-100 text-base-content min-h-screen antialiased">
-			<div class="mx-auto w-full max-w-lg px-6 pt-16 pb-24 sm:pt-20">
+			<div class={ containerClass(meta.Wide) }>
 				<div class="mb-10 flex items-center justify-between gap-4">
 					<nav aria-label="メイン">
 						<ul class="flex items-center gap-5">
 							<li>
-								<a href="/" class={ navClass(active, "home") }>ホーム</a>
+								<a href="/" class={ navClass(meta.Active, "home") }>記事</a>
 							</li>
 							<li>
-								<a href="/about" class={ navClass(active, "about") }>About</a>
+								<a href="/about" class={ navClass(meta.Active, "about") }>About</a>
 							</li>
 						</ul>
 					</nav>

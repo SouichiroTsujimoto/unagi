@@ -3,7 +3,7 @@ package aicwrap
 import (
 	_ "unsafe"
 
-	_ "github.com/SouichiroTsujimoto/unigo-template/internal/logogen/colorboot"
+	_ "github.com/SouichiroTsujimoto/unagi/internal/logogen/colorboot"
 
 	"github.com/TheZoraiz/ascii-image-converter/aic_package"
 	gookitColor "github.com/gookit/color"

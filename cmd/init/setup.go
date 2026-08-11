@@ -11,7 +11,7 @@ import (
 	"github.com/charmbracelet/lipgloss"
 )
 
-const skeletonModule = "github.com/SouichiroTsujimoto/unigo-template"
+const skeletonModule = "github.com/SouichiroTsujimoto/unagi"
 
 type options struct {
 	Root string

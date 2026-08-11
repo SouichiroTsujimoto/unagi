@@ -1,2 +1,4 @@
 import '../vendor/is-land.js';
-import './account-panel.js';
+import './admin-auth.js';
+import './article-editor.js';
+import './braille-lab.js';

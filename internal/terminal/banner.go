@@ -11,7 +11,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/SouichiroTsujimoto/unigo-template/internal/config"
+	"github.com/SouichiroTsujimoto/unagi/internal/config"
 )
 
 var (

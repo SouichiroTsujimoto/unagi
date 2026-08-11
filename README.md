@@ -32,10 +32,13 @@ Goのワンバイナリフルスタックwebアプリケーションのテンプ
 
 ```sh
 just init
+cp .env.example .env   # 必要なら UNIGO_BOOTSTRAP_TOKEN_HASH を設定
 just run
 ```
 
 既定では`http://localhost:8080`で起動します。
+
+`just run`(cmd/dev)はプロジェクトルートの`.env`を読みます(未設定の環境変数のみ)。`bin/server`は読みません。秘密情報は`.unigo.toml`ではなく`.env`か環境変数へ置いてください。
 
 `just init`は次を行います(Charmのhuh)。
 

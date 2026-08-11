@@ -94,3 +94,32 @@ dsn = "postgres://localhost/unigo"
 		t.Fatalf("db=%+v", got.DB)
 	}
 }
+
+func TestLoadPathReadsSite(t *testing.T) {
+	t.Parallel()
+
+	path := filepath.Join(t.TempDir(), "unigo.toml")
+	content := `
+[site]
+name = "myblog"
+description = "desc"
+base_url = "https://example.com"
+author = "me"
+`
+	if err := os.WriteFile(path, []byte(content), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	got := LoadPath(path)
+	if got.Site.Name != "myblog" || got.Site.BaseURL != "https://example.com" || got.Site.Author != "me" {
+		t.Fatalf("site=%+v", got.Site)
+	}
+}
+
+func TestLoadPathMissingSiteUsesDefault(t *testing.T) {
+	t.Parallel()
+
+	got := LoadPath(filepath.Join(t.TempDir(), "missing.toml"))
+	if got.Site.Name != "unagi" {
+		t.Fatalf("site name=%q", got.Site.Name)
+	}
+}

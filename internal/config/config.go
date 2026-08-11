@@ -20,6 +20,15 @@ type File struct {
 	Dev    Dev    `toml:"dev"`
 	DB     DB     `toml:"db"`
 	Banner Banner `toml:"banner"`
+	Site   Site   `toml:"site"`
+}
+
+// Site holds public site metadata for pages, RSS, and sitemap.
+type Site struct {
+	Name        string `toml:"name"`
+	Description string `toml:"description"`
+	BaseURL     string `toml:"base_url"`
+	Author      string `toml:"author"`
 }
 
 // DB holds database connection defaults.
@@ -71,6 +80,12 @@ func Default() File {
 				"pid",
 			},
 		},
+		Site: Site{
+			Name:        "unagi",
+			Description: "個人用のミニマルな技術ブログ",
+			BaseURL:     "http://localhost:8080",
+			Author:      "",
+		},
 	}
 }
 
@@ -116,6 +131,15 @@ func (f File) mergeDefaults() File {
 	}
 	if len(f.Banner.Fields) == 0 {
 		f.Banner.Fields = append([]string(nil), def.Banner.Fields...)
+	}
+	if strings.TrimSpace(f.Site.Name) == "" {
+		f.Site.Name = def.Site.Name
+	}
+	if strings.TrimSpace(f.Site.Description) == "" {
+		f.Site.Description = def.Site.Description
+	}
+	if strings.TrimSpace(f.Site.BaseURL) == "" {
+		f.Site.BaseURL = def.Site.BaseURL
 	}
 	return f
 }

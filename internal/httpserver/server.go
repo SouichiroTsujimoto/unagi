@@ -11,16 +11,17 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/SouichiroTsujimoto/unigo-template/internal/terminal"
+	"github.com/SouichiroTsujimoto/unagi/internal/terminal"
 )
 
 type Config struct {
-	Address   string
-	Domains   []string
-	ACMEEmail string
-	DBPath    string
-	Version   string
-	Banner    string // "full" (ASCII logo + box) or "compact" (box only)
+	Address          string
+	Domains          []string
+	ACMEEmail        string
+	CertMagicStorage string
+	DBPath           string
+	Version          string
+	Banner           string // "full" (ASCII logo + box) or "compact" (box only)
 }
 
 func Run(handler http.Handler, config Config, log *slog.Logger) error {
