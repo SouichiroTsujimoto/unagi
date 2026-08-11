@@ -1,0 +1,26 @@
+---
+description: このリポジトリではVCS操作にJujutsu(jj)を使う
+alwaysApply: true
+---
+
+# Jujutsu (jj)
+
+このリポジトリはGitとcolocatedな`jj`を作業VCSとする。履歴を変える操作は`git`ではなく`jj`で行う。
+
+## コマンド対応
+
+- `git status` → `jj status`
+- `git diff` → `jj diff`
+- `git log` → `jj log`
+- `git commit` → `jj commit` / `jj describe`
+- `git pull` → `jj git fetch`(必要なら`jj rebase -d main@origin`)
+- `git push` → `jj git push`(必要なら先に`jj bookmark move <name> --to @-`、または`jj git push -c @-`)
+
+PR作成は従来どおり`gh`。リモートへの反映だけ`jj git push`を使う。
+
+## 安全規約
+
+- commit / push / bookmark移動はユーザが明示したときだけ行う。
+- `.jj/`や`~/.config/jj`は編集・コミットしない。
+- 秘密情報(`.env`、credentialsなど)をcommitに含めない。
+- `main`へのforce相当、破壊的な`jj abandon` / `jj undo`の乱用は、ユーザ明示時以外しない。

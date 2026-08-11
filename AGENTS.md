@@ -1,11 +1,13 @@
 # プロジェクト規約
 
-このリポジトリは、Go、Echo、templ、is-land、Preact/htm、Tailwind CSS、daisyUI、SQLite、CertMagic、lipgloss、tint、huhで構成するワンバイナリのフルスタックWebアプリケーション・テンプレートである。
+このリポジトリは**unagi**(個人用のミニマルな技術ブログ)である。[unigo-template](https://github.com/SouichiroTsujimoto/unigo-template)から作成し、同じワンバイナリ構成(Go、Echo、templ、is-land、Preact/htm、Tailwind CSS、daisyUI、SQLite、CertMagic、lipgloss、tint、huh)を引き継ぐ。
 
 - ワンバイナリ: 別ランタイム不要
-- デプロイ: systemd、distrolessコンテナ、Nanosユニカーネルなど
-- 開発者体験: `just run`でホットリロード・TUI対応
+- デプロイ: systemd、distrolessコンテナ、Nanosユニカーネルなど(本番のNanos手順は`deploy/nanos/`)
+- 開発者体験: `just run`でホットリロード・TUI対応。`cmd/dev`は`.env`を読む(`bin/server`は読まない)
 - Islands Architecture: templ + `<is-land>` + Preact/htm (ビルド時・実行時 Node.js不要)
+- 公開記事の正本はSQLite。埋め込み`articles/`は空DB時のseed用
+- 管理画面(`/admin`)は単一管理者のpasskey認証。秘密は環境変数(`.unigo.toml`に平文で置かない)
 
 小さなpackage境界を保つ。
 
@@ -13,6 +15,15 @@
 
 - ユーザの認識・意見と`AGENTS.md`や`README.md`の記述との間で矛盾やズレが生じている時、AIの認識の根拠となった`AGENTS.md`/`README.md`の記述を明示し、根拠を提示する。
 - 間違った記述だと指摘された場合は、その記述を削除/修正する。
+
+## バージョン管理(Jujutsu)
+
+- このリポジトリの作業VCSはGitとcolocatedなJujutsu(`jj`)である。
+- 履歴を書き換える操作は`git`ではなく`jj`を使う(`status` / `diff` / `log` / `commit` / `describe` / `rebase` / `squash` / `bookmark` / `git push` / `git fetch`)。
+- `git`は読み取りや`gh`連携の補助に留め、mutatingな`git commit` / `git rebase` / `git push`は避ける。
+- bookmarkはGit branchと同期する。push前に必要なbookmarkを`@-`へ動かす(例: `jj bookmark move main --to @-`)。名前を自動生成してpushする場合は`jj git push -c @-`。
+- ユーザがcommitやpushを依頼したときも、明示依頼時のみ実行し、秘密情報を含めず、`main`へのforce相当や破壊的な操作はユーザが明示しない限り行わない。実装は`jj`で行う。
+- `.jj/`とユーザの`~/.config/jj`は編集・コミットしない。
 
 ## 不変条件
 
@@ -24,11 +35,11 @@
 - 業務操作は`internal/feature/<name>`に置き、Web handlerからSQLを直接実行しない。
 - DB接続(driver/DSN)、Bunの構築、`bun/migrate`の実行順序は`internal/db`が所有する。
 - 機能packageのデータアクセスにはBunを使い、schema変更は`internal/db/migrations/<driver>`の連番SQL migrationで管理する。
-- 操作の入口は`account.Accounts`のように機能を表す名前にし、汎用的な`Service`や`Context`を避ける。
+- 操作の入口は`article.Articles`や`adminauth.Auth`のように機能を表す名前にし、汎用的な`Service`や`Context`を避ける。
 - HTTP、HTTPS、CertMagicの起動処理は`internal/httpserver`が所有する。
 - 起動バナー、tint付き端末ログは`internal/terminal`が所有する。
 - 開発用ランチャー／TUI(Bubble Tea)は`cmd/dev/internal/tui`が所有する。
-- プロジェクト設定(`.unigo.toml`)は`internal/config`が所有する。
+- プロジェクト設定(`.unigo.toml`)は`internal/config`が所有する。secretやbootstrap tokenは環境変数 / `.env`。
 - 埋め込み静的資産は`static`が所有する(CSS、vendored ESM)。islandのソースは`internal/web/islands`が所有し、`/static/islands`として配信する。
 - カスタムバナーロゴのASCII生成は`cmd/logo` / `internal/logogen`が所有する(`bin/server`にはascii-image-converterをリンクしない)。
 - `common`、`utils`、`service`、`repository`、`cli`を慣習だけで追加しない。
