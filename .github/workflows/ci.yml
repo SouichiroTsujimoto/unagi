@@ -7,9 +7,33 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  group: ci-${{ github.ref }}
+  # Never cancel a deploy that is already talking to Cloud Run.
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
+
 jobs:
   verify:
     runs-on: ubuntu-latest
+
+    # Integration tests apply supabase/migrations (except Storage) onto this
+    # Postgres. The GitHub integration applies the same files in production.
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    env:
+      UNIGO_TEST_DB_DSN: postgresql://postgres:postgres@127.0.0.1:5432/postgres
+
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -23,6 +47,8 @@ jobs:
       - name: Generate templ
         run: go tool templ generate -path internal/web
 
+      # The image builds from committed sources, so stale generated files
+      # would ship to production.
       - name: Check generated files
         run: git diff --exit-code
 
@@ -34,3 +60,66 @@ jobs:
 
       - name: Build
         run: CGO_ENABLED=0 go build -o bin/server ./cmd/server
+
+  # Push to main is the release. Config lives in repository variables, which
+  # deploy/cloudrun/bootstrap.sh writes; app secrets stay in Secret Manager.
+  deploy:
+    needs: verify
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: read
+      id-token: write
+
+    env:
+      GCP_PROJECT: ${{ vars.GCP_PROJECT }}
+      GCP_REGION: ${{ vars.GCP_REGION }}
+      ARTIFACT_REPO: ${{ vars.ARTIFACT_REPO }}
+      CLOUD_RUN_SERVICE: ${{ vars.CLOUD_RUN_SERVICE }}
+      RUNTIME_SA: ${{ vars.RUNTIME_SA }}
+      UNIGO_SITE_BASE_URL: ${{ vars.UNIGO_SITE_BASE_URL }}
+      UNIGO_SITE_NAME: ${{ vars.UNIGO_SITE_NAME }}
+      UNIGO_SITE_DESCRIPTION: ${{ vars.UNIGO_SITE_DESCRIPTION }}
+      UNIGO_MEDIA_PUBLIC_BASE: ${{ vars.UNIGO_MEDIA_PUBLIC_BASE }}
+      UNIGO_DB_DSN_SECRET: ${{ vars.UNIGO_DB_DSN_SECRET }}
+      UNIGO_SUPABASE_URL_SECRET: ${{ vars.UNIGO_SUPABASE_URL_SECRET }}
+      UNIGO_SUPABASE_ANON_KEY_SECRET: ${{ vars.UNIGO_SUPABASE_ANON_KEY_SECRET }}
+      UNIGO_SUPABASE_SERVICE_ROLE_KEY_SECRET: ${{ vars.UNIGO_SUPABASE_SERVICE_ROLE_KEY_SECRET }}
+      UNIGO_SUPABASE_JWT_SECRET_SECRET: ${{ vars.UNIGO_SUPABASE_JWT_SECRET_SECRET }}
+      UNIGO_ADMIN_USER_IDS_SECRET: ${{ vars.UNIGO_ADMIN_USER_IDS_SECRET }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # Keyless: no service account JSON in GitHub secrets.
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ vars.GCP_WIF_PROVIDER }}
+          service_account: ${{ vars.GCP_DEPLOY_SA }}
+
+      - name: Set up gcloud
+        uses: google-github-actions/setup-gcloud@v2
+
+      - name: Configure Docker for Artifact Registry
+        run: gcloud auth configure-docker "${GCP_REGION:-asia-northeast1}-docker.pkg.dev" --quiet
+
+      - name: Build and push image
+        run: bash deploy/cloudrun/build.sh
+        env:
+          IMAGE_TAG: ${{ github.sha }}
+
+      - name: Deploy to Cloud Run
+        run: bash deploy/cloudrun/deploy.sh
+        env:
+          IMAGE: ${{ vars.GCP_REGION || 'asia-northeast1' }}-docker.pkg.dev/${{ vars.GCP_PROJECT }}/${{ vars.ARTIFACT_REPO || 'unagi' }}/${{ vars.CLOUD_RUN_SERVICE || 'unagi' }}:${{ github.sha }}
+
+      - name: Smoke check
+        run: |
+          url="$(gcloud run services describe "${CLOUD_RUN_SERVICE:-unagi}" \
+            --project="${GCP_PROJECT}" --region="${GCP_REGION:-asia-northeast1}" \
+            --format='value(status.url)')"
+          curl -fsS --retry 12 --retry-all-errors --retry-delay 5 "${url}/healthz"
+          curl -fsS --retry 12 --retry-all-errors --retry-delay 5 "${url}/" >/dev/null

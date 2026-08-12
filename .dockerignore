@@ -1,0 +1,18 @@
+# Keep the build context small: the image only needs Go sources plus the
+# embedded assets (static/, articles/). Schema is not in the image.
+.git
+.jj
+.github
+.cursor
+bin
+tmp
+data
+tools
+node_modules
+deploy
+supabase
+.env
+.env.*
+*.db
+*.db-*
+.DS_Store
