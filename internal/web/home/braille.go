@@ -170,6 +170,14 @@ func glyphSource(name string) DotGrid {
 			"#.#.."+
 			".#..."+
 			".....")
+	case "share":
+		// Tray with upward arrow (share affordance).
+		return parseGlyph(5, 5, ""+
+			"..#.."+
+			".###."+
+			"..#.."+
+			"#...#"+
+			"#####")
 	default:
 		return DotGrid{}
 	}
@@ -359,6 +367,38 @@ func glyphPulseFrames(name string, cols, rows, n int) []DotGrid {
 			frame.On[y*cols+scan] = true
 			if prev := (scan - 1 + cols) % cols; !base.On[y*cols+prev] {
 				frame.On[y*cols+prev] = false
+			}
+		}
+		out[i] = frame
+	}
+	return out
+}
+
+// GlyphScrollFrames shifts a glyph one column right each frame on a looping strip.
+// The strip is the glyph plus one empty column, so wraps keep a 1-cell gap
+// between successive copies instead of joining tip-to-tail.
+// n defaults to cols+1 (one full period).
+func GlyphScrollFrames(name string, cols, rows, n int) []DotGrid {
+	period := cols + 1 // glyph columns + 1-gap
+	if n < 1 {
+		n = period
+	}
+	base := GlyphGrid(name, cols, rows)
+	out := make([]DotGrid, n)
+	for i := 0; i < n; i++ {
+		frame := emptyGrid(cols, rows)
+		shift := i % period
+		for y := 0; y < rows; y++ {
+			for x := 0; x < cols; x++ {
+				// Viewport x maps onto looping strip [glyph | empty].
+				src := (x - shift) % period
+				if src < 0 {
+					src += period
+				}
+				if src >= cols {
+					continue // gap column
+				}
+				frame.On[y*cols+x] = base.On[y*cols+src]
 			}
 		}
 		out[i] = frame

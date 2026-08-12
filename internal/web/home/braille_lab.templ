@@ -188,3 +188,61 @@ templ dotWaapiLabeled(frames []DotGrid, cols int, rows int, label string) {
 		label={ label }
 	></dot-grid-waapi>
 }
+
+// articleBrailleIcon is seed noise↔arrow-right swap beside an article title.
+// Layer (.dot-swap-a/b) never owns grid geometry; only .dot-grid-face does.
+templ articleBrailleIcon(seed string) {
+	{{ pattern := NoiseGrid(seed, 5, 5) }}
+	{{ arrowFrames := GlyphScrollFrames("arrow-right", 5, 5, 0) }}
+	<span class="article-braille-swap" aria-hidden="true">
+		<span class="dot-swap-face">
+			<span class="dot-swap-a">
+				<span class="dot-grid-face">
+					for i, on := range pattern.On {
+						<span class={ brailleDotClass(on) } style={ "--i:" + itoa(i) }></span>
+					}
+				</span>
+			</span>
+			<dot-grid-waapi
+				class="dot-swap-b article-arrow-scroll"
+				cols="5"
+				rows="5"
+				frames={ FramesAttrFromGrids(arrowFrames) }
+				play-parent=".article-braille-host"
+				loop
+				bare
+			>
+				<span class="dot-grid-face">
+					for i, on := range arrowFrames[0].On {
+						<span class={ brailleDotClass(on) } style={ "--i:" + itoa(i) }></span>
+					}
+				</span>
+			</dot-grid-waapi>
+		</span>
+	</span>
+}
+
+// ArticleShareBrailleIcon is seed noise↔share-tray for the article header share control.
+// Same layer → .dot-grid-face structure as articleBrailleIcon (size CSS stays shared).
+templ ArticleShareBrailleIcon(seed string) {
+	{{ pattern := NoiseGrid(seed, 5, 5) }}
+	{{ share := GlyphGrid("share", 5, 5) }}
+	<span class="article-braille-swap" aria-hidden="true">
+		<span class="dot-swap-face">
+			<span class="dot-swap-a">
+				<span class="dot-grid-face">
+					for i, on := range pattern.On {
+						<span class={ brailleDotClass(on) } style={ "--i:" + itoa(i) }></span>
+					}
+				</span>
+			</span>
+			<span class="dot-swap-b">
+				<span class="dot-grid-face">
+					for i, on := range share.On {
+						<span class={ brailleDotClass(on) } style={ "--i:" + itoa(i) }></span>
+					}
+				</span>
+			</span>
+		</span>
+	</span>
+}

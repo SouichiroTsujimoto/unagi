@@ -75,6 +75,8 @@ class DotGridWaapi extends HTMLElement {
     if (this._mounted) return;
     this._mounted = true;
     this._gen = 0;
+    this._loop = this.hasAttribute("loop");
+    this._bare = this.hasAttribute("bare");
 
     const cols = Math.max(1, Number(this.getAttribute("cols")) || 5);
     const rows = Math.max(1, Number(this.getAttribute("rows")) || 5);
@@ -82,23 +84,55 @@ class DotGridWaapi extends HTMLElement {
     this._frames = parseGridFrames(this.getAttribute("frames"));
     this._expected = cols * rows;
 
-    const first = this._frames[0] || "";
-    const dots = [];
-    for (let i = 0; i < this._expected; i++) {
-      const on = first[i] === "1" ? " is-on" : "";
-      dots.push(`<span class="braille-dot${on}" style="--i:${i}"></span>`);
-    }
-
     this.classList.add("dot-grid-waapi", sizeClass(cols, rows));
     this.style.setProperty("--cols", String(cols));
     this.style.setProperty("--rows", String(rows));
-    this.tabIndex = 0;
-    this.title = label;
-    this.innerHTML =
-      `<span class="dot-grid-face" aria-hidden="true">${dots.join("")}</span>` +
-      `<span class="seed"></span>`;
-    this.querySelector(".seed").textContent = label;
-    this._face = this.querySelector(".dot-grid-face");
+
+    let face = this.querySelector(".dot-grid-face");
+    if (!face) {
+      const first = this._frames[0] || "";
+      const dots = [];
+      for (let i = 0; i < this._expected; i++) {
+        const on = first[i] === "1" ? " is-on" : "";
+        dots.push(`<span class="braille-dot${on}" style="--i:${i}"></span>`);
+      }
+      this.innerHTML =
+        `<span class="dot-grid-face" aria-hidden="true">${dots.join("")}</span>` +
+        (this._bare ? "" : `<span class="seed"></span>`);
+      face = this.querySelector(".dot-grid-face");
+      if (!this._bare) {
+        this.querySelector(".seed").textContent = label;
+        this.title = label;
+        this.tabIndex = 0;
+      }
+    } else {
+      face.setAttribute("aria-hidden", "true");
+      this.querySelector(".seed")?.remove();
+      if (!this._bare && label) {
+        const seed = document.createElement("span");
+        seed.className = "seed";
+        seed.textContent = label;
+        this.appendChild(seed);
+        this.title = label;
+        this.tabIndex = 0;
+      }
+    }
+    this._face = face;
+
+    const parentSel = this.getAttribute("play-parent");
+    if (parentSel) {
+      const parent = this.closest(parentSel);
+      if (parent) {
+        this._parent = parent;
+        parent.addEventListener("pointerenter", () => this.play({ loop: this._loop, delay: 160 }));
+        parent.addEventListener("pointerleave", () => this.stop());
+        parent.addEventListener("focusin", () => this.play({ loop: this._loop, delay: 160 }));
+        parent.addEventListener("focusout", (ev) => {
+          if (!parent.contains(ev.relatedTarget)) this.stop();
+        });
+        return;
+      }
+    }
 
     this.addEventListener("pointerenter", () => this.play());
     this.addEventListener("focus", () => this.play());
@@ -113,28 +147,69 @@ class DotGridWaapi extends HTMLElement {
     }
   }
 
-  play() {
+  play(opts = {}) {
     const frames = this._frames;
     if (!frames.length) return;
+    const loop = Boolean(opts.loop ?? this._loop);
+    const delay = Number(opts.delay) || 0;
+    const gen = ++this._gen;
+
+    if (this._delayTimer) {
+      clearTimeout(this._delayTimer);
+      this._delayTimer = 0;
+    }
     if (this._timer) {
       clearInterval(this._timer);
       this._timer = 0;
     }
-    if (prefersReducedMotion()) {
-      this.applyBits(frames[frames.length - 1] || frames[0]);
-      return;
-    }
-    let i = 0;
-    this.applyBits(frames[0]);
-    this._timer = setInterval(() => {
-      i += 1;
-      if (i >= frames.length) {
-        clearInterval(this._timer);
-        this._timer = 0;
+
+    const start = () => {
+      if (gen !== this._gen) return;
+      if (prefersReducedMotion()) {
+        this.applyBits(frames[frames.length - 1] || frames[0]);
         return;
       }
-      this.applyBits(frames[i]);
-    }, 110);
+      let i = 0;
+      this.applyBits(frames[0]);
+      this._timer = setInterval(() => {
+        if (gen !== this._gen) {
+          clearInterval(this._timer);
+          this._timer = 0;
+          return;
+        }
+        i += 1;
+        if (i >= frames.length) {
+          if (!loop) {
+            clearInterval(this._timer);
+            this._timer = 0;
+            return;
+          }
+          i = 0;
+        }
+        this.applyBits(frames[i]);
+      }, 110);
+    };
+
+    if (delay > 0) {
+      this._delayTimer = setTimeout(start, delay);
+    } else {
+      start();
+    }
+  }
+
+  stop() {
+    this._gen += 1;
+    if (this._delayTimer) {
+      clearTimeout(this._delayTimer);
+      this._delayTimer = 0;
+    }
+    if (this._timer) {
+      clearInterval(this._timer);
+      this._timer = 0;
+    }
+    if (this._frames[0]) {
+      this.applyBits(this._frames[0]);
+    }
   }
 }
 
