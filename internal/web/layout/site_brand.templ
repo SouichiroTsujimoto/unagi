@@ -1,0 +1,23 @@
+package layout
+
+// SiteBrand is the top-left home link: 5×5 braille circle + site name.
+templ SiteBrand() {
+	<a
+		href="/"
+		class="site-brand group/brand inline-flex items-center gap-2 text-base-content no-underline focus-visible:outline-none"
+		aria-label="unagi トップへ"
+	>
+		<span
+			class="site-brand-mark dot-cascade size-5x5"
+			style="--cols:5;--rows:5"
+			aria-hidden="true"
+		>
+			<span class="dot-grid-face">
+				for i := 0; i < 25; i++ {
+					<span class={ siteBrandDotClass(i) } style={ siteBrandDotStyle(i) }></span>
+				}
+			</span>
+		</span>
+		<span class="site-brand-name text-lg font-extrabold tracking-tight">unagi</span>
+	</a>
+}

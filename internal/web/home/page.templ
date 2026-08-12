@@ -19,7 +19,14 @@ templ Page(meta layout.PageMeta, site layout.Site, articles []article.Article) {
 						decoding="async"
 					/>
 					<div class="space-y-1">
-						<h1 class="text-xl font-semibold tracking-tight">{ site.Name }</h1>
+						<h1 class="text-xl tracking-tight">
+							Hello from
+							<a
+								href="/about"
+								class="link link-hover text-base-content"
+								rel="noopener noreferrer"
+							>wuhu1sland</a>
+						</h1>
 						if site.Description != "" {
 							<p class="text-base-content/55 text-[15px] leading-relaxed">{ site.Description }</p>
 						}
@@ -28,7 +35,7 @@ templ Page(meta layout.PageMeta, site layout.Site, articles []article.Article) {
 			</header>
 
 			<section class="space-y-6" aria-labelledby="posts-title">
-				<h2 id="posts-title" class="text-base font-semibold tracking-tight">記事</h2>
+				<h2 id="posts-title" class="text-base font-semibold tracking-tight">Posts</h2>
 				if len(articles) == 0 {
 					<p class="text-base-content/55 text-[15px] leading-relaxed">まだ公開記事がありません。</p>
 				} else {
@@ -83,8 +90,6 @@ templ Page(meta layout.PageMeta, site layout.Site, articles []article.Article) {
 					</ul>
 				}
 			</section>
-
-			@brailleLab()
 		</main>
 	}
 }

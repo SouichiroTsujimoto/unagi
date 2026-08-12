@@ -18,7 +18,7 @@ func New(site layout.Site, log *slog.Logger) *Handler {
 
 func (handler *Handler) Show(c echo.Context) error {
 	meta := layout.PageMeta{
-		Title:       handler.site.TitleWithSite("About"),
+		Title:       handler.site.TitleWithSite("me"),
 		Description: handler.site.Description,
 		Canonical:   handler.site.AbsoluteURL("/about"),
 		OGImage:     handler.site.AbsoluteURL("/static/wuhu1sland-2.png"),

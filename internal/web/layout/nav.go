@@ -15,7 +15,7 @@ func navClass(active, name string) string {
 }
 
 func containerClass(wide bool) string {
-	base := "mx-auto w-full px-6 pt-16 pb-24 sm:pt-20"
+	base := "mx-auto w-full px-6 pb-24 pt-8 sm:pt-10"
 	if wide {
 		return base + " max-w-2xl"
 	}

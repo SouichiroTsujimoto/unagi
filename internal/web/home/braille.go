@@ -288,90 +288,11 @@ func itoa(n int) string {
 	return strconv.Itoa(n)
 }
 
-func max(a, b int) int {
-	if a > b {
-		return a
-	}
-	return b
-}
-
-var labSeeds = []string{
-	"hello-unagi",
-	"cascade-wave",
-	"spore-garden",
-}
-
-var labSizes = []struct {
-	Cols  int
-	Rows  int
-	Label string
-}{
-	{2, 4, "2×4"},
-	{3, 3, "3×3"},
-	{5, 5, "5×5"},
-	{10, 10, "10×10"},
-}
-
-var labGlyphs = []struct {
-	Name  string
-	Label string
-}{
-	{"arrow-right", "→"},
-	{"arrow-up", "↑"},
-	{"smile", "☺"},
-	{"wink", "😉"},
-	{"heart", "♥"},
-	{"x", "✕"},
-}
-
 func brailleDotClass(on bool) string {
 	if on {
 		return "braille-dot is-on"
 	}
 	return "braille-dot"
-}
-
-func swapRest(seed string) string {
-	rest, _ := SwapPair(seed)
-	return rest
-}
-
-func swapHover(seed string) string {
-	_, hover := SwapPair(seed)
-	return hover
-}
-
-func gridStyle(cols, rows int) string {
-	return "--cols:" + itoa(cols) + ";--rows:" + itoa(rows)
-}
-
-func sizeKey(cols, rows int) string {
-	if cols == 2 && rows == 4 {
-		return "2x4"
-	}
-	return itoa(cols) + "x" + itoa(rows)
-}
-
-// glyphPulseFrames expands a symbol with a traveling scan highlight for WAAPI demos.
-func glyphPulseFrames(name string, cols, rows, n int) []DotGrid {
-	if n < 1 {
-		n = 1
-	}
-	base := GlyphGrid(name, cols, rows)
-	out := make([]DotGrid, n)
-	for i := 0; i < n; i++ {
-		frame := emptyGrid(cols, rows)
-		copy(frame.On, base.On)
-		scan := i % cols
-		for y := 0; y < rows; y++ {
-			frame.On[y*cols+scan] = true
-			if prev := (scan - 1 + cols) % cols; !base.On[y*cols+prev] {
-				frame.On[y*cols+prev] = false
-			}
-		}
-		out[i] = frame
-	}
-	return out
 }
 
 // GlyphScrollFrames shifts a glyph one column right each frame on a looping strip.

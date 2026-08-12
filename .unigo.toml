@@ -15,7 +15,7 @@ dsn = "app.db"
 
 [site]
 name = "unagi"
-description = "個人用のミニマルな技術ブログ"
+description = "wuhu1slandの技術ノート"
 base_url = "http://localhost:8080"
 # author = "your name"
 

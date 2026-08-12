@@ -43,7 +43,7 @@ func Page(meta layout.PageMeta, site layout.Site) templ.Component {
 				}()
 			}
 			ctx = templ.InitializeContext(ctx)
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 1, "<main class=\"flex flex-col gap-10\"><header class=\"space-y-4\"><img src=\"/static/wuhu1sland-2.png\" alt=\"")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 1, "<main class=\"flex flex-col gap-10\"><header class=\"about-header space-y-5\"><img src=\"/static/wuhu1sland-2.png\" alt=\"")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -56,80 +56,7 @@ func Page(meta layout.PageMeta, site layout.Site) templ.Component {
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 2, "\" width=\"320\" height=\"320\" class=\"h-40 w-40 rounded-2xl object-cover\" decoding=\"async\"><div class=\"space-y-3\"><h1 class=\"text-xl font-semibold tracking-tight\">About</h1>")
-			if templ_7745c5c3_Err != nil {
-				return templ_7745c5c3_Err
-			}
-			if site.Author != "" {
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 3, "<p class=\"text-base-content/55 text-[15px] leading-relaxed\"><span class=\"text-base-content font-medium\">")
-				if templ_7745c5c3_Err != nil {
-					return templ_7745c5c3_Err
-				}
-				var templ_7745c5c3_Var4 string
-				templ_7745c5c3_Var4, templ_7745c5c3_Err = templ.JoinStringErrs(site.Author)
-				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `about/page.templ`, Line: 21, Col: 64}
-				}
-				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var4))
-				if templ_7745c5c3_Err != nil {
-					return templ_7745c5c3_Err
-				}
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 4, "</span> の個人技術ブログ <span class=\"text-base-content font-medium\">")
-				if templ_7745c5c3_Err != nil {
-					return templ_7745c5c3_Err
-				}
-				var templ_7745c5c3_Var5 string
-				templ_7745c5c3_Var5, templ_7745c5c3_Err = templ.JoinStringErrs(site.Name)
-				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `about/page.templ`, Line: 23, Col: 62}
-				}
-				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var5))
-				if templ_7745c5c3_Err != nil {
-					return templ_7745c5c3_Err
-				}
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 5, "</span> です。</p>")
-				if templ_7745c5c3_Err != nil {
-					return templ_7745c5c3_Err
-				}
-			}
-			if site.Description != "" {
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 6, "<p class=\"text-base-content/55 text-[15px] leading-relaxed\">")
-				if templ_7745c5c3_Err != nil {
-					return templ_7745c5c3_Err
-				}
-				var templ_7745c5c3_Var6 string
-				templ_7745c5c3_Var6, templ_7745c5c3_Err = templ.JoinStringErrs(site.Description)
-				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `about/page.templ`, Line: 28, Col: 84}
-				}
-				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var6))
-				if templ_7745c5c3_Err != nil {
-					return templ_7745c5c3_Err
-				}
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 7, "</p>")
-				if templ_7745c5c3_Err != nil {
-					return templ_7745c5c3_Err
-				}
-			} else if site.Author == "" {
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 8, "<p class=\"text-base-content/55 text-[15px] leading-relaxed\"><span class=\"text-base-content font-medium\">")
-				if templ_7745c5c3_Err != nil {
-					return templ_7745c5c3_Err
-				}
-				var templ_7745c5c3_Var7 string
-				templ_7745c5c3_Var7, templ_7745c5c3_Err = templ.JoinStringErrs(site.Name)
-				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `about/page.templ`, Line: 31, Col: 62}
-				}
-				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var7))
-				if templ_7745c5c3_Err != nil {
-					return templ_7745c5c3_Err
-				}
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 9, "</span> は、個人用のミニマルな技術ブログです。</p>")
-				if templ_7745c5c3_Err != nil {
-					return templ_7745c5c3_Err
-				}
-			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 10, "</div></header><section class=\"space-y-4\" aria-labelledby=\"writing-title\"><h2 id=\"writing-title\" class=\"text-base font-semibold tracking-tight\">書き方</h2><p class=\"text-base-content/55 text-[15px] leading-relaxed\">記事はZenn互換のMarkdownとして <code class=\"text-base-content/70\">articles/</code> に置き、画像は <code class=\"text-base-content/70\">images/</code> へ配置します。公開設定はfrontmatterの <code class=\"text-base-content/70\">published</code> と <code class=\"text-base-content/70\">published_at</code> で制御します。</p></section><section class=\"space-y-4\" aria-labelledby=\"subscribe-title\"><h2 id=\"subscribe-title\" class=\"text-base font-semibold tracking-tight\">購読</h2><p class=\"text-base-content/55 text-[15px] leading-relaxed\"><a href=\"/feed.xml\" class=\"link link-hover text-base-content\">RSS</a> から新着記事を購読できます。</p></section></main>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 2, "\" width=\"320\" height=\"320\" class=\"about-avatar h-40 w-40 rounded-2xl object-cover\" decoding=\"async\" fetchpriority=\"high\"><div class=\"space-y-4\"><h1 class=\"text-xl font-semibold tracking-tight\">Tsujimoto Souichiro (@wuhu1sland)</h1><p class=\"about-profile-link text-base-content/55 text-[15px] leading-relaxed\" style=\"--i:1\"><time datetime=\"2005-05-07\">2005/5/7</time>・21歳・学部3回生</p><ul class=\"about-socials\" aria-label=\"Links\"><li style=\"--i:2\"><a href=\"https://x.com/wuhu1sland\" class=\"about-social-link\" rel=\"me noopener noreferrer\" target=\"_blank\">X</a></li><li style=\"--i:3\"><a href=\"https://github.com/SouichiroTsujimoto\" class=\"about-social-link\" rel=\"me noopener noreferrer\" target=\"_blank\">GitHub</a></li><li style=\"--i:3\"><a href=\"https://wuhu1s.land/\" class=\"about-social-link\" rel=\"me noopener noreferrer\" target=\"_blank\">wuhu1s.land</a></li></ul></div></header><section class=\"space-y-4\" aria-labelledby=\"unagi-title\"><h2 id=\"unagi-title\" class=\"text-base font-semibold tracking-tight\">unagi</h2><p class=\"text-base-content/55 text-[15px] leading-relaxed\">個人用のミニマルな技術ブログエンジンです。ワンバイナリのフルスタックGoフレームワーク<a href=\"https://github.com/SouichiroTsujimoto/unigo-template\" class=\"link link-hover text-base-content\">SouichiroTsujimoto/unigo-template</a>で作成しています。</p><p class=\"text-base-content/55 text-[15px] leading-relaxed\"><a href=\"https://github.com/SouichiroTsujimoto/unagi\" class=\"link link-hover text-base-content\">SouichiroTsujimoto/unagi</a>もOSSとして公開しています。気に入ったらforkして使ってみて下さい。</p></section><section class=\"space-y-4\" aria-labelledby=\"subscribe-title\"><h2 id=\"subscribe-title\" class=\"text-base font-semibold tracking-tight\">購読</h2><p class=\"text-base-content/55 text-[15px] leading-relaxed\"><a href=\"/feed.xml\" class=\"link link-hover text-base-content\">RSS</a> から新着記事を購読できます。</p></section></main>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
