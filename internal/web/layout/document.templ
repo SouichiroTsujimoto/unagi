@@ -58,7 +58,7 @@ templ Document(meta PageMeta) {
 				<script src={ src } defer></script>
 			}
 		</head>
-		<body class="bg-base-100 text-base-content min-h-screen antialiased">
+		<body id="top" class="bg-base-100 text-base-content min-h-screen antialiased">
 			<div class={ containerClass(meta.Wide) }>
 				<div class="mb-10 flex items-center justify-between gap-4">
 					<nav aria-label="メイン">
@@ -83,6 +83,7 @@ templ Document(meta PageMeta) {
 				</div>
 				{ children... }
 			</div>
+			@BackToTop()
 		</body>
 	</html>
 }

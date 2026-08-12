@@ -1,0 +1,17 @@
+package layout
+
+// BackToTop is a fixed braille ↑ cascade control that jumps to #top.
+templ BackToTop() {
+	<a
+		href="#top"
+		class="back-to-top dot-cascade size-5x5"
+		style="--cols:5;--rows:5"
+		aria-label="ページトップへ戻る"
+	>
+		<span class="dot-grid-face" aria-hidden="true">
+			for i := 0; i < 25; i++ {
+				<span class={ backToTopDotClass(i) } style={ backToTopDotStyle(i) }></span>
+			}
+		</span>
+	</a>
+}
