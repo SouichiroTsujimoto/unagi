@@ -125,6 +125,21 @@ templ EditPage(site layout.Site, item article.Article, csrf string, isNew bool) 
 					></article-editor>
 				</template>
 			</is-land>
+			if !isNew && item.ID > 0 {
+				<section class="space-y-3 border-t border-base-content/10 pt-8">
+					<header class="space-y-1">
+						<h2 class="text-base font-semibold tracking-tight">ステッカーボード</h2>
+						<p class="text-base-content/55 text-[15px] leading-relaxed">
+							貼られた順の一覧です。選択して剥がすか、すべて削除できます。
+						</p>
+					</header>
+					<is-land on:visible>
+						<template data-island>
+							<admin-stickers csrf={ csrf } article-id={ itoa(item.ID) }></admin-stickers>
+						</template>
+					</is-land>
+				</section>
+			}
 		</main>
 	}
 }

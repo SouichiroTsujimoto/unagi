@@ -6,9 +6,10 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/labstack/echo/v4"
 	"github.com/SouichiroTsujimoto/unagi/internal/feature/adminauth"
 	"github.com/SouichiroTsujimoto/unagi/internal/feature/article"
+	"github.com/SouichiroTsujimoto/unagi/internal/feature/engagement"
+	"github.com/labstack/echo/v4"
 )
 
 func (h *Handler) BeginSetup(c echo.Context) error {
@@ -239,11 +240,59 @@ func (h *Handler) Preview(c echo.Context) error {
 	if err := c.Bind(&body); err != nil {
 		return echo.NewHTTPError(http.StatusBadRequest, "invalid json")
 	}
-	html, err := article.Render(body.BodyMD)
+	html, err := h.articles.RenderHTMLSync(c.Request().Context(), body.BodyMD)
 	if err != nil {
 		return echo.NewHTTPError(http.StatusBadRequest, "render failed")
 	}
 	return c.JSON(http.StatusOK, map[string]string{"html": html})
+}
+
+func (h *Handler) ListStickers(c echo.Context) error {
+	id, err := strconv.ParseInt(c.Param("id"), 10, 64)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, "invalid id")
+	}
+	stickers, err := h.engagement.ListStickersByArticleID(c.Request().Context(), id)
+	if errors.Is(err, engagement.ErrNotFound) {
+		return echo.NewHTTPError(http.StatusNotFound, "not found")
+	}
+	if err != nil {
+		h.log.Error("list stickers", "err", err, "article_id", id)
+		return echo.NewHTTPError(http.StatusInternalServerError, "internal error")
+	}
+	return c.JSON(http.StatusOK, map[string]any{"stickers": stickers})
+}
+
+func (h *Handler) DeleteStickers(c echo.Context) error {
+	id, err := strconv.ParseInt(c.Param("id"), 10, 64)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, "invalid id")
+	}
+	var body struct {
+		IDs []int64 `json:"ids"`
+		All bool    `json:"all"`
+	}
+	if err := c.Bind(&body); err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, "invalid json")
+	}
+
+	var n int64
+	if body.All {
+		n, err = h.engagement.DeleteAllStickers(c.Request().Context(), id)
+	} else {
+		n, err = h.engagement.DeleteStickersByIDs(c.Request().Context(), id, body.IDs)
+	}
+	if errors.Is(err, engagement.ErrNotFound) {
+		return echo.NewHTTPError(http.StatusNotFound, "not found")
+	}
+	if errors.Is(err, engagement.ErrInvalidInput) {
+		return echo.NewHTTPError(http.StatusBadRequest, "invalid input")
+	}
+	if err != nil {
+		h.log.Error("delete stickers", "err", err, "article_id", id)
+		return echo.NewHTTPError(http.StatusInternalServerError, "internal error")
+	}
+	return c.JSON(http.StatusOK, map[string]any{"deleted": n})
 }
 
 func bindSaveInput(c echo.Context) (article.SaveInput, error) {

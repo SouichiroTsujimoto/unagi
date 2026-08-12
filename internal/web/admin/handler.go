@@ -8,24 +8,26 @@ import (
 	"strings"
 	"time"
 
-	"github.com/a-h/templ"
-	"github.com/labstack/echo/v4"
 	"github.com/SouichiroTsujimoto/unagi/internal/feature/adminauth"
 	"github.com/SouichiroTsujimoto/unagi/internal/feature/article"
+	"github.com/SouichiroTsujimoto/unagi/internal/feature/engagement"
 	"github.com/SouichiroTsujimoto/unagi/internal/web/layout"
+	"github.com/a-h/templ"
+	"github.com/labstack/echo/v4"
 )
 
 const csrfHeader = "X-CSRF-Token"
 
 type Handler struct {
-	auth     *adminauth.Auth
-	articles *article.Articles
-	site     layout.Site
-	log      *slog.Logger
+	auth       *adminauth.Auth
+	articles   *article.Articles
+	engagement *engagement.Engagement
+	site       layout.Site
+	log        *slog.Logger
 }
 
-func New(auth *adminauth.Auth, articles *article.Articles, site layout.Site, log *slog.Logger) *Handler {
-	return &Handler{auth: auth, articles: articles, site: site, log: log}
+func New(auth *adminauth.Auth, articles *article.Articles, eng *engagement.Engagement, site layout.Site, log *slog.Logger) *Handler {
+	return &Handler{auth: auth, articles: articles, engagement: eng, site: site, log: log}
 }
 
 func (h *Handler) RequireAuth(next echo.HandlerFunc) echo.HandlerFunc {
