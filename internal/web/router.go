@@ -3,24 +3,28 @@ package web
 import (
 	"io/fs"
 
-	"github.com/labstack/echo/v4"
 	"github.com/SouichiroTsujimoto/unagi/internal/web/about"
 	"github.com/SouichiroTsujimoto/unagi/internal/web/admin"
 	webarticle "github.com/SouichiroTsujimoto/unagi/internal/web/article"
+	"github.com/SouichiroTsujimoto/unagi/internal/web/engagement"
 	"github.com/SouichiroTsujimoto/unagi/internal/web/feed"
 	"github.com/SouichiroTsujimoto/unagi/internal/web/home"
+	"github.com/SouichiroTsujimoto/unagi/internal/web/linkcard"
 	webmedia "github.com/SouichiroTsujimoto/unagi/internal/web/media"
 	"github.com/SouichiroTsujimoto/unagi/internal/web/sitemap"
+	"github.com/labstack/echo/v4"
 )
 
 type Handlers struct {
-	Home    *home.Handler
-	Article *webarticle.Handler
-	About   *about.Handler
-	Feed    *feed.Handler
-	Sitemap *sitemap.Handler
-	Admin   *admin.Handler
-	Media   *webmedia.Handler
+	Home       *home.Handler
+	Article    *webarticle.Handler
+	About      *about.Handler
+	Feed       *feed.Handler
+	Sitemap    *sitemap.Handler
+	Admin      *admin.Handler
+	Media      *webmedia.Handler
+	Engagement *engagement.Handler
+	LinkCard   *linkcard.Handler
 }
 
 func New(h Handlers, staticFiles, islandFiles fs.FS) *echo.Echo {
@@ -39,6 +43,12 @@ func New(h Handlers, staticFiles, islandFiles fs.FS) *echo.Echo {
 	router.GET("/about", h.About.Show)
 	router.GET("/feed.xml", h.Feed.Show)
 	router.GET("/sitemap.xml", h.Sitemap.Show)
+
+	router.GET("/api/articles/:slug/engagement", h.Engagement.Get)
+	router.POST("/api/articles/:slug/stickers", h.Engagement.AddEmojiSticker)
+	router.POST("/api/articles/:slug/avatar-stickers", h.Engagement.AddAvatarSticker)
+	router.POST("/api/articles/:slug/comments", h.Engagement.AddComment)
+	router.POST("/api/linkcards", h.LinkCard.Resolve)
 
 	router.GET("/admin/login", h.Admin.LoginPage)
 	router.GET("/admin/setup", h.Admin.SetupPage)
@@ -60,6 +70,8 @@ func New(h Handlers, staticFiles, islandFiles fs.FS) *echo.Echo {
 	adminAPI.PUT("/articles/:id", h.Admin.SaveArticle)
 	adminAPI.POST("/articles/:id/publish", h.Admin.PublishArticle)
 	adminAPI.POST("/articles/:id/unpublish", h.Admin.UnpublishArticle)
+	adminAPI.GET("/articles/:id/stickers", h.Admin.ListStickers)
+	adminAPI.DELETE("/articles/:id/stickers", h.Admin.DeleteStickers)
 	adminAPI.POST("/preview", h.Admin.Preview)
 	adminAPI.POST("/media", h.Media.Upload)
 	adminAPI.POST("/passkeys/begin", h.Admin.BeginRegisterPasskey)

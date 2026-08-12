@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/SouichiroTsujimoto/unagi/internal/db"
+	"github.com/SouichiroTsujimoto/unagi/internal/feature/linkcard"
 )
 
 func openTestArticles(t *testing.T) *Articles {
@@ -188,12 +189,45 @@ hidden *text*
 		`<details class="article-details">`,
 		`<summary>Open me</summary>`,
 		`hello`,
-		`<code`,
+		`class="chroma"`,
+		`class="kn"`,
 	} {
 		if !strings.Contains(html, want) {
 			t.Fatalf("missing %q in %s", want, html)
 		}
 	}
+}
+
+func TestRenderLinkCards(t *testing.T) {
+	t.Parallel()
+
+	md := "see\n\nhttps://www.youtube.com/watch?v=dQw4w9WgXcQ\n\n@[card](https://example.com/)\n"
+	exp := stubExpander{html: `<figure class="article-embed article-embed-youtube"><div class="article-embed-frame"><iframe title="YouTube video" src="https://www.youtube-nocookie.com/embed/dQw4w9WgXcQ" loading="lazy" referrerpolicy="strict-origin-when-cross-origin" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen></iframe></div></figure>
+<figure class="article-linkcard"><a class="article-linkcard-link" href="https://example.com/" rel="noopener noreferrer" target="_blank"><span class="article-linkcard-body"><span class="article-linkcard-title">Example</span><span class="article-linkcard-meta">example.com</span></span></a></figure>
+`}
+	a := &Articles{embeds: exp}
+	html, err := a.RenderHTML(context.Background(), md)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, want := range []string{
+		`article-embed-youtube`,
+		`youtube-nocookie.com/embed/dQw4w9WgXcQ`,
+		`article-linkcard`,
+		`iframe`,
+	} {
+		if !strings.Contains(html, want) {
+			t.Fatalf("missing %q in %s", want, html)
+		}
+	}
+}
+
+type stubExpander struct{ html string }
+
+func (s stubExpander) ExpandMarkdown(ctx context.Context, body string) (string, error) {
+	_ = ctx
+	_ = body
+	return s.html, nil
 }
 
 func TestSaveRevisionKeepsPublishedStable(t *testing.T) {
@@ -226,5 +260,37 @@ func TestSaveRevisionKeepsPublishedStable(t *testing.T) {
 	}
 	if pub.Title != "V1" || strings.TrimSpace(pub.BodyMD) != "one" {
 		t.Fatalf("published changed: %+v", pub)
+	}
+}
+
+func TestRenderHTMLYouTubeLive(t *testing.T) {
+	t.Parallel()
+	a := New(nil)
+	a.SetEmbeds(linkcard.New(nil))
+	html, err := a.RenderHTML(context.Background(), "hello\n\nhttps://www.youtube.com/watch?v=dQw4w9WgXcQ\n\nbye\n")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(html, "youtube-nocookie.com/embed/dQw4w9WgXcQ") {
+		t.Fatalf("got %s", html)
+	}
+	if strings.Contains(html, "<p><figure") {
+		t.Fatalf("figure wrapped in p: %s", html)
+	}
+}
+
+func TestRenderHTMLPendingCard(t *testing.T) {
+	t.Parallel()
+	a := New(nil)
+	a.SetEmbeds(linkcard.New(nil))
+	html, err := a.RenderHTML(context.Background(), "https://example.com/post\n")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(html, `data-linkcard-url="https://example.com/post"`) {
+		t.Fatalf("pending attr stripped: %s", html)
+	}
+	if !strings.Contains(html, "skeleton") {
+		t.Fatalf("missing skeleton: %s", html)
 	}
 }

@@ -419,7 +419,7 @@ func replaceTopics(ctx context.Context, tx bun.Tx, articleID int64, topics []str
 		var topic dbTopic
 		err := tx.NewSelect().Model(&topic).Where("name = ?", name).Scan(ctx)
 		if errors.Is(err, sql.ErrNoRows) {
-			topic = dbTopic{Name: name,Slug: topicSlug(name)}
+			topic = dbTopic{Name: name, Slug: topicSlug(name)}
 			if _, err := tx.NewInsert().Model(&topic).Exec(ctx); err != nil {
 				return fmt.Errorf("insert topic: %w", err)
 			}
@@ -477,7 +477,7 @@ func (a *Articles) hydrateOne(ctx context.Context, row dbArticle, withHTML bool)
 		item.PublishedAt = row.PublishedAt.Time.In(jst)
 	}
 	if withHTML {
-		html, err := Render(rev.BodyMD)
+		html, err := a.RenderHTML(ctx, rev.BodyMD)
 		if err != nil {
 			return Article{}, err
 		}

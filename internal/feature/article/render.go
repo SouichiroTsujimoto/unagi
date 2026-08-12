@@ -6,6 +6,7 @@ import (
 	"regexp"
 	"strings"
 
+	chromahtml "github.com/alecthomas/chroma/v2/formatters/html"
 	"github.com/microcosm-cc/bluemonday"
 	"github.com/yuin/goldmark"
 	highlighting "github.com/yuin/goldmark-highlighting/v2"
@@ -25,6 +26,10 @@ var markdown = goldmark.New(
 		extension.Footnote,
 		highlighting.NewHighlighting(
 			highlighting.WithStyle("github"),
+			highlighting.WithFormatOptions(
+				chromahtml.WithClasses(true),
+				chromahtml.WithAllClasses(true),
+			),
 		),
 	),
 	goldmark.WithParserOptions(
@@ -39,11 +44,15 @@ var markdown = goldmark.New(
 
 var policy = func() *bluemonday.Policy {
 	p := bluemonday.UGCPolicy()
-	p.AllowAttrs("class").OnElements("div", "aside", "pre", "code", "span", "details")
+	p.AllowAttrs("class").OnElements("div", "aside", "pre", "code", "span", "details", "figure", "figcaption", "a")
 	p.AllowAttrs("open").OnElements("details")
-	p.AllowElements("aside", "details", "summary", "figure", "figcaption")
+	p.AllowElements("aside", "details", "summary", "figure", "figcaption", "iframe", "noscript")
 	p.AllowAttrs("id").OnElements("h1", "h2", "h3", "h4", "h5", "h6", "li", "sup", "a")
-	p.AllowAttrs("href").OnElements("a")
+	p.AllowAttrs("href", "rel", "target").OnElements("a")
+	p.AllowAttrs("src", "alt", "loading", "decoding").OnElements("img")
+	p.AllowAttrs("src", "title", "loading", "referrerpolicy", "allow", "allowfullscreen").OnElements("iframe")
+	p.AllowAttrs("data-linkcard-url", "aria-busy", "aria-hidden").OnElements("figure", "span", "div")
+	p.AllowURLSchemes("https", "http")
 	p.RequireNoFollowOnLinks(false)
 	return p
 }()

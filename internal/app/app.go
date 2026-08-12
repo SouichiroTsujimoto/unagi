@@ -7,11 +7,13 @@ import (
 	"os"
 	"strings"
 
-	sitecontent "github.com/SouichiroTsujimoto/unagi"
 	"cloud.google.com/go/storage"
+	sitecontent "github.com/SouichiroTsujimoto/unagi"
 	"github.com/SouichiroTsujimoto/unagi/internal/db"
 	"github.com/SouichiroTsujimoto/unagi/internal/feature/adminauth"
 	"github.com/SouichiroTsujimoto/unagi/internal/feature/article"
+	"github.com/SouichiroTsujimoto/unagi/internal/feature/engagement"
+	"github.com/SouichiroTsujimoto/unagi/internal/feature/linkcard"
 	"github.com/SouichiroTsujimoto/unagi/internal/feature/media"
 	"github.com/SouichiroTsujimoto/unagi/internal/httpserver"
 	"github.com/SouichiroTsujimoto/unagi/internal/terminal"
@@ -19,10 +21,12 @@ import (
 	"github.com/SouichiroTsujimoto/unagi/internal/web/about"
 	"github.com/SouichiroTsujimoto/unagi/internal/web/admin"
 	webarticle "github.com/SouichiroTsujimoto/unagi/internal/web/article"
+	webengagement "github.com/SouichiroTsujimoto/unagi/internal/web/engagement"
 	"github.com/SouichiroTsujimoto/unagi/internal/web/feed"
 	"github.com/SouichiroTsujimoto/unagi/internal/web/home"
 	"github.com/SouichiroTsujimoto/unagi/internal/web/islands"
 	"github.com/SouichiroTsujimoto/unagi/internal/web/layout"
+	weblinkcard "github.com/SouichiroTsujimoto/unagi/internal/web/linkcard"
 	webmedia "github.com/SouichiroTsujimoto/unagi/internal/web/media"
 	"github.com/SouichiroTsujimoto/unagi/internal/web/sitemap"
 	"github.com/SouichiroTsujimoto/unagi/static"
@@ -55,6 +59,9 @@ func Run(config Config) error {
 	defer database.Close()
 
 	articles := article.New(database)
+	cards := linkcard.New(database)
+	articles.SetEmbeds(cards)
+	eng := engagement.New(database, articles)
 	articlesFS, err := sitecontent.Articles()
 	if err != nil {
 		return fmt.Errorf("articles fs: %w", err)
@@ -88,13 +95,15 @@ func Run(config Config) error {
 	}
 
 	handler := web.New(web.Handlers{
-		Home:    home.New(articles, site, log),
-		Article: webarticle.New(articles, site, log),
-		About:   about.New(site, log),
-		Feed:    feed.New(articles, site, log),
-		Sitemap: sitemap.New(articles, site, log),
-		Admin:   admin.New(auth, articles, site, log),
-		Media:   webmedia.New(mediaLib, log),
+		Home:       home.New(articles, site, log),
+		Article:    webarticle.New(articles, site, log),
+		About:      about.New(site, log),
+		Feed:       feed.New(articles, site, log),
+		Sitemap:    sitemap.New(articles, site, log),
+		Admin:      admin.New(auth, articles, eng, site, log),
+		Media:      webmedia.New(mediaLib, log),
+		Engagement: webengagement.New(eng, site, log),
+		LinkCard:   weblinkcard.New(cards, log),
 	}, static.FS(), islands.FS())
 
 	return httpserver.Run(handler, httpserver.Config{

@@ -17,10 +17,10 @@ import (
 )
 
 var (
-	ErrNotFound      = errors.New("article not found")
-	ErrSlugExists    = errors.New("slug already exists")
-	ErrInvalidSlug   = errors.New("invalid slug")
-	ErrInvalidInput  = errors.New("invalid input")
+	ErrNotFound            = errors.New("article not found")
+	ErrSlugExists          = errors.New("slug already exists")
+	ErrInvalidSlug         = errors.New("invalid slug")
+	ErrInvalidInput        = errors.New("invalid input")
 	ErrCannotUnpublishLast = errors.New("cannot unpublish")
 )
 
@@ -56,13 +56,13 @@ type Article struct {
 type dbArticle struct {
 	bun.BaseModel `bun:"table:articles,alias:a"`
 
-	ID                   int64         `bun:",pk,autoincrement"`
-	Slug                 string        `bun:",notnull,unique"`
-	Status               string        `bun:",notnull"`
-	PublishedRevisionID  sql.NullInt64 `bun:"published_revision_id"`
-	PublishedAt          sql.NullTime  `bun:"published_at"`
-	CreatedAt            time.Time     `bun:",notnull"`
-	UpdatedAt            time.Time     `bun:",notnull"`
+	ID                  int64         `bun:",pk,autoincrement"`
+	Slug                string        `bun:",notnull,unique"`
+	Status              string        `bun:",notnull"`
+	PublishedRevisionID sql.NullInt64 `bun:"published_revision_id"`
+	PublishedAt         sql.NullTime  `bun:"published_at"`
+	CreatedAt           time.Time     `bun:",notnull"`
+	UpdatedAt           time.Time     `bun:",notnull"`
 }
 
 type dbRevision struct {
@@ -93,13 +93,60 @@ type dbArticleTopic struct {
 	TopicID   int64 `bun:",pk"`
 }
 
+// MarkdownExpander expands bare URLs / @[card](...) into embed HTML before markdown render.
+type MarkdownExpander interface {
+	ExpandMarkdown(ctx context.Context, body string) (string, error)
+}
+
+// SyncMarkdownExpander can resolve embeds synchronously (admin preview).
+type SyncMarkdownExpander interface {
+	MarkdownExpander
+	ExpandMarkdownSync(ctx context.Context, body string) (string, error)
+}
+
 // Articles is the article store backed by Bun.
 type Articles struct {
-	db *bun.DB
+	db     *bun.DB
+	embeds MarkdownExpander
 }
 
 func New(db *bun.DB) *Articles {
 	return &Articles{db: db}
+}
+
+// SetEmbeds attaches a link-card / embed expander used when rendering HTML.
+func (a *Articles) SetEmbeds(embeds MarkdownExpander) {
+	a.embeds = embeds
+}
+
+// RenderHTML expands embeds (when configured) then converts Markdown to sanitized HTML.
+// Link cards use cache/instant providers only; pending cards hydrate client-side.
+func (a *Articles) RenderHTML(ctx context.Context, body string) (string, error) {
+	if a != nil && a.embeds != nil {
+		expanded, err := a.embeds.ExpandMarkdown(ctx, body)
+		if err == nil {
+			body = expanded
+		}
+	}
+	return Render(body)
+}
+
+// RenderHTMLSync resolves every link card before returning HTML.
+func (a *Articles) RenderHTMLSync(ctx context.Context, body string) (string, error) {
+	if a != nil && a.embeds != nil {
+		if sync, ok := a.embeds.(SyncMarkdownExpander); ok {
+			expanded, err := sync.ExpandMarkdownSync(ctx, body)
+			if err == nil {
+				body = expanded
+			}
+		} else {
+			expanded, err := a.embeds.ExpandMarkdown(ctx, body)
+			if err == nil {
+				body = expanded
+			}
+		}
+	}
+	return Render(body)
 }
 
 // SaveInput is the editable content for create/update.
