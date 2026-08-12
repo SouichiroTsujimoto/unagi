@@ -54,12 +54,13 @@ type Media struct {
 }
 
 type Library struct {
-	db    *bun.DB
-	store ObjectStore
+	db         *bun.DB
+	store      ObjectStore
+	publicBase string
 }
 
-func New(db *bun.DB, store ObjectStore) *Library {
-	return &Library{db: db, store: store}
+func New(db *bun.DB, store ObjectStore, publicBase string) *Library {
+	return &Library{db: db, store: store, publicBase: strings.TrimRight(strings.TrimSpace(publicBase), "/")}
 }
 
 type UploadResult struct {
@@ -106,7 +107,14 @@ func (l *Library) Upload(ctx context.Context, filename string, r io.Reader, size
 		_ = l.store.Delete(ctx, key)
 		return UploadResult{}, fmt.Errorf("insert media: %w", err)
 	}
-	return UploadResult{Media: item, URL: "/images/" + key}, nil
+	return UploadResult{Media: item, URL: l.publicURL(key)}, nil
+}
+
+func (l *Library) publicURL(key string) string {
+	if l.publicBase == "" {
+		return "/images/" + key
+	}
+	return l.publicBase + "/" + key
 }
 
 // GetByKey loads media metadata.

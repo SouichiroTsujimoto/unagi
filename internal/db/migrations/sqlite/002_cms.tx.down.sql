@@ -1,9 +1,0 @@
-DROP TABLE IF EXISTS recovery_codes;
-DROP TABLE IF EXISTS admin_sessions;
-DROP TABLE IF EXISTS webauthn_challenges;
-DROP TABLE IF EXISTS admin_credentials;
-DROP TABLE IF EXISTS media;
-DROP TABLE IF EXISTS article_topics;
-DROP TABLE IF EXISTS topics;
-DROP TABLE IF EXISTS article_revisions;
-DROP TABLE IF EXISTS articles;

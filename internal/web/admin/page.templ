@@ -1,7 +1,6 @@
 package admin
 
 import (
-	"github.com/SouichiroTsujimoto/unagi/internal/feature/adminauth"
 	"github.com/SouichiroTsujimoto/unagi/internal/feature/article"
 	"github.com/SouichiroTsujimoto/unagi/internal/web/layout"
 )
@@ -23,7 +22,7 @@ templ LoginPage(site layout.Site) {
 			<header class="space-y-2">
 				<h1 class="text-xl font-semibold tracking-tight">Admin Login</h1>
 				<p class="text-base-content/55 text-[15px] leading-relaxed">
-					1Passwordなどのpasskeyでログインします。
+					Supabase Authのpasskeyでログインします。管理者UUIDは環境変数に登録済みである必要があります。
 				</p>
 			</header>
 			<is-land on:idle>
@@ -35,25 +34,7 @@ templ LoginPage(site layout.Site) {
 	}
 }
 
-templ SetupPage(site layout.Site) {
-	@shell(site, "Setup", "admin") {
-		<main class="flex flex-col gap-8">
-			<header class="space-y-2">
-				<h1 class="text-xl font-semibold tracking-tight">初期設定</h1>
-				<p class="text-base-content/55 text-[15px] leading-relaxed">
-					bootstrap tokenとpasskeyで管理者を登録します。
-				</p>
-			</header>
-			<is-land on:idle>
-				<template data-island>
-					<admin-setup></admin-setup>
-				</template>
-			</is-land>
-		</main>
-	}
-}
-
-templ IndexPage(site layout.Site, items []article.Article, csrf string) {
+templ IndexPage(site layout.Site, items []article.Article) {
 	@shell(site, "Articles", "admin") {
 		<main class="flex flex-col gap-8">
 			<header class="flex flex-wrap items-end justify-between gap-4">
@@ -62,10 +43,8 @@ templ IndexPage(site layout.Site, items []article.Article, csrf string) {
 					<p class="text-base-content/55 text-[15px]">{ site.Name }</p>
 				</div>
 				<div class="flex flex-wrap items-center gap-2">
-					<a href="/admin/passkeys" class="btn btn-ghost btn-sm">Passkeys</a>
 					<a href="/admin/articles/new" class="btn btn-primary btn-sm">新規</a>
 					<form method="post" action="/admin/logout">
-						<input type="hidden" name="csrf" value={ csrf }/>
 						<button class="btn btn-ghost btn-sm" type="submit">Logout</button>
 					</form>
 				</div>
@@ -98,7 +77,7 @@ templ IndexPage(site layout.Site, items []article.Article, csrf string) {
 	}
 }
 
-templ EditPage(site layout.Site, item article.Article, csrf string, isNew bool) {
+templ EditPage(site layout.Site, item article.Article, isNew bool) {
 	@shell(site, editTitle(item, isNew), "admin") {
 		<main class="flex flex-col gap-6">
 			<header class="flex flex-wrap items-end justify-between gap-4">
@@ -111,7 +90,6 @@ templ EditPage(site layout.Site, item article.Article, csrf string, isNew bool) 
 			<is-land on:visible>
 				<template data-island>
 					<article-editor
-						csrf={ csrf }
 						article-id={ itoa(item.ID) }
 						is-new={ boolAttr(isNew) }
 						slug={ item.Slug }
@@ -135,41 +113,24 @@ templ EditPage(site layout.Site, item article.Article, csrf string, isNew bool) 
 					</header>
 					<is-land on:visible>
 						<template data-island>
-							<admin-stickers csrf={ csrf } article-id={ itoa(item.ID) }></admin-stickers>
+							<admin-stickers article-id={ itoa(item.ID) }></admin-stickers>
+						</template>
+					</is-land>
+				</section>
+				<section class="space-y-3 border-t border-base-content/10 pt-8">
+					<header class="space-y-1">
+						<h2 class="text-base font-semibold tracking-tight">コメント</h2>
+						<p class="text-base-content/55 text-[15px] leading-relaxed">
+							非表示・再表示・削除ができます。非表示にしたコメントは公開ページに出ません。
+						</p>
+					</header>
+					<is-land on:visible>
+						<template data-island>
+							<admin-comments article-id={ itoa(item.ID) }></admin-comments>
 						</template>
 					</is-land>
 				</section>
 			}
-		</main>
-	}
-}
-
-templ PasskeysPage(site layout.Site, creds []adminauth.Credential, csrf string) {
-	@shell(site, "Passkeys", "admin") {
-		<main class="flex flex-col gap-8">
-			<header class="flex flex-wrap items-center justify-between gap-4">
-				<h1 class="text-xl font-semibold tracking-tight">Passkeys</h1>
-				<a href="/admin" class="btn btn-ghost btn-sm">戻る</a>
-			</header>
-			if len(creds) == 0 {
-				<p class="text-base-content/55 text-[15px]">登録済みのpasskeyはありません。</p>
-			} else {
-				<ul class="divide-y divide-base-content/10">
-					for _, cred := range creds {
-						<li class="flex items-center justify-between gap-4 py-4 first:pt-0 last:pb-0">
-							<div class="space-y-1">
-								<p class="font-medium">{ cred.DisplayName }</p>
-								<p class="text-base-content/45 text-sm">{ cred.CreatedAt.Format("2006-01-02 15:04") }</p>
-							</div>
-						</li>
-					}
-				</ul>
-			}
-			<is-land on:idle>
-				<template data-island>
-					<admin-passkeys csrf={ csrf }></admin-passkeys>
-				</template>
-			</is-land>
 		</main>
 	}
 }

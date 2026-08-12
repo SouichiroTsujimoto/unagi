@@ -173,11 +173,11 @@ func glyphSource(name string) DotGrid {
 	case "share":
 		// Tray with upward arrow (share affordance).
 		return parseGlyph(5, 5, ""+
-			"..#.."+
-			".###."+
-			"..#.."+
-			"#...#"+
-			"#####")
+			".####"+
+			"...##"+
+			"..#.#"+
+			".#..#"+
+			"#....")
 	default:
 		return DotGrid{}
 	}

@@ -12,12 +12,12 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/charmbracelet/bubbles/viewport"
-	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/lipgloss"
 	"github.com/SouichiroTsujimoto/unagi/cmd/dev/internal/reload"
 	"github.com/SouichiroTsujimoto/unagi/internal/db"
 	"github.com/SouichiroTsujimoto/unagi/internal/terminal"
+	"github.com/charmbracelet/bubbles/viewport"
+	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/lipgloss"
 	"golang.org/x/term"
 )
 

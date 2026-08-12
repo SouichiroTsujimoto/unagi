@@ -6,12 +6,9 @@ import (
 	"io"
 	"os"
 	"path/filepath"
-	"strings"
-
-	"cloud.google.com/go/storage"
 )
 
-// LocalStore stores objects under a directory for development.
+// LocalStore stores objects under a directory for development and tests.
 type LocalStore struct {
 	root string
 }
@@ -64,59 +61,6 @@ func (s *LocalStore) Delete(_ context.Context, key string) error {
 	}
 	err := os.Remove(filepath.Join(s.root, key))
 	if os.IsNotExist(err) {
-		return nil
-	}
-	return err
-}
-
-// GCSStore stores objects in a Google Cloud Storage bucket via ADC.
-type GCSStore struct {
-	bucket *storage.BucketHandle
-	prefix string
-}
-
-func NewGCSStore(client *storage.Client, bucket, prefix string) *GCSStore {
-	prefix = strings.Trim(prefix, "/")
-	if prefix != "" {
-		prefix += "/"
-	}
-	return &GCSStore{
-		bucket: client.Bucket(bucket),
-		prefix: prefix,
-	}
-}
-
-func (s *GCSStore) Put(ctx context.Context, key string, r io.Reader, contentType string, _ int64) error {
-	if !validObjectKey(key) {
-		return ErrInvalidObject
-	}
-	w := s.bucket.Object(s.prefix + key).NewWriter(ctx)
-	w.ContentType = contentType
-	if _, err := io.Copy(w, r); err != nil {
-		_ = w.Close()
-		return err
-	}
-	return w.Close()
-}
-
-func (s *GCSStore) Open(ctx context.Context, key string) (io.ReadCloser, string, int64, error) {
-	if !validObjectKey(key) {
-		return nil, "", 0, ErrInvalidObject
-	}
-	obj := s.bucket.Object(s.prefix + key)
-	r, err := obj.NewReader(ctx)
-	if err != nil {
-		return nil, "", 0, err
-	}
-	return r, r.Attrs.ContentType, r.Attrs.Size, nil
-}
-
-func (s *GCSStore) Delete(ctx context.Context, key string) error {
-	if !validObjectKey(key) {
-		return ErrInvalidObject
-	}
-	err := s.bucket.Object(s.prefix + key).Delete(ctx)
-	if err == storage.ErrObjectNotExist {
 		return nil
 	}
 	return err

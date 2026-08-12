@@ -42,11 +42,14 @@ async function api(path, method, body) {
     method,
     credentials: "same-origin",
     headers: {
-      "Content-Type": "application/json",
+      ...(body ? { "Content-Type": "application/json" } : {}),
       Accept: "application/json",
     },
     body: body ? JSON.stringify(body) : undefined,
   });
+  if (res.status === 204) {
+    return null;
+  }
   const text = await res.text();
   let data = null;
   try {
@@ -77,7 +80,23 @@ function formatTime(value) {
 }
 
 function loginHref(path) {
-  return path || "/auth/x/login";
+  const base = path || "/auth/x/login";
+  const returnTo = `${window.location.pathname}${window.location.search || ""}`;
+  const join = base.includes("?") ? "&" : "?";
+  return `${base}${join}return_to=${encodeURIComponent(returnTo)}`;
+}
+
+function logoutHref(path) {
+  const base = path || "/auth/x/logout";
+  const returnTo = `${window.location.pathname}${window.location.search || ""}`;
+  const join = base.includes("?") ? "&" : "?";
+  return `${base}${join}return_to=${encodeURIComponent(returnTo)}`;
+}
+
+function xProfileHref(username) {
+  const handle = String(username || "").trim().replace(/^@/, "");
+  if (!handle) return "";
+  return `https://x.com/${encodeURIComponent(handle)}`;
 }
 
 function clamp01(v) {
@@ -102,6 +121,7 @@ function ArticleEngagement(props) {
   const [comments, setComments] = useState([]);
   const [allowedEmoji, setAllowedEmoji] = useState([]);
   const [loginPath, setLoginPath] = useState("/auth/x/login");
+  const [logoutPath, setLogoutPath] = useState("/auth/x/logout");
   const [authenticated, setAuthenticated] = useState(false);
   const [viewer, setViewer] = useState(null);
   const [palette, setPalette] = useState(null);
@@ -122,6 +142,7 @@ function ArticleEngagement(props) {
       setComments(Array.isArray(data.comments) ? data.comments : []);
       setAllowedEmoji(Array.isArray(data.allowedEmoji) ? data.allowedEmoji : []);
       setLoginPath(data.loginPath || "/auth/x/login");
+      setLogoutPath(data.logoutPath || "/auth/x/logout");
       setAuthenticated(Boolean(data.authenticated));
       setViewer(data.viewer || null);
     } catch (err) {
@@ -227,10 +248,14 @@ function ArticleEngagement(props) {
       });
       setStickers((prev) => [...prev, created]);
       setPalette(null);
-      setBoardMessage("アイコンを貼りました");
+      // setBoardMessage("アイコンを貼りました");
     } catch (err) {
       if (err.status === 401 && err.data?.loginPath) {
         setBoardMessage("Xアカウントでログインすると、自分のアイコンを貼れます");
+        return;
+      }
+      if (err.status === 429) {
+        setBoardMessage("ステッカーボードがいっぱいです");
         return;
       }
       setBoardMessage(err.message || String(err));
@@ -248,12 +273,38 @@ function ArticleEngagement(props) {
       const created = await api(`/api/articles/${encodeURIComponent(slug)}/comments`, "POST", {
         body: commentBody,
       });
-      setComments((prev) => [...prev, created]);
+      setComments((prev) => [...prev, { ...created, mine: true }]);
       setCommentBody("");
       setCommentMessage("コメントを投稿しました");
     } catch (err) {
       if (err.status === 401 && err.data?.loginPath) {
         setCommentMessage("コメントするにはXアカウントでログインしてください");
+        return;
+      }
+      if (err.status === 429) {
+        setCommentMessage("この記事へのコメント上限に達しました");
+        return;
+      }
+      setCommentMessage(err.message || String(err));
+    } finally {
+      setCommentBusy(false);
+    }
+  }
+
+  async function deleteComment(comment) {
+    if (!authenticated || !comment?.id || commentBusy) return;
+    if (!window.confirm("このコメントを削除しますか？")) {
+      return;
+    }
+    setCommentBusy(true);
+    setCommentMessage("");
+    try {
+      await api(`/api/articles/${encodeURIComponent(slug)}/comments/${comment.id}`, "DELETE");
+      setComments((prev) => prev.filter((item) => item.id !== comment.id));
+      setCommentMessage("コメントを削除しました");
+    } catch (err) {
+      if (err.status === 401 && err.data?.loginPath) {
+        setCommentMessage("削除するにはXアカウントでログインしてください");
         return;
       }
       setCommentMessage(err.message || String(err));
@@ -274,7 +325,7 @@ function ArticleEngagement(props) {
         <header class="space-y-1">
           <h2 id="engagement-board-title" class="text-base font-semibold tracking-tight">ステッカーボード</h2>
           <p class="text-base-content/55 text-sm leading-relaxed">
-            ボードをクリックするとパレットが開きます。絵文字を選ぶとその位置に貼れます。自分のアイコンはXログイン後にパレットから選べます。
+            ボードをクリックしてステッカーを貼りましょう！Xアカウントでログインすると、自分のアイコンのステッカーを残せます。
           </p>
         </header>
 
@@ -299,8 +350,8 @@ function ArticleEngagement(props) {
                     class="engagement-sticker engagement-sticker-avatar"
                     src=${sticker.value}
                     alt=${sticker.displayName || sticker.username || "avatar"}
-                    width="40"
-                    height="40"
+                    width="52"
+                    height="52"
                     style=${`left:${sticker.x * 100}%;top:${sticker.y * 100}%`}
                     loading="lazy"
                   />
@@ -402,7 +453,12 @@ function ArticleEngagement(props) {
         </div>
 
         ${authenticated && linkedLabel
-          ? html`<p class="text-sm text-base-content/55">${linkedLabel}</p>`
+          ? html`
+              <div class="flex flex-wrap items-center gap-3 text-sm text-base-content/55">
+                <p>${linkedLabel}</p>
+                <a class="link link-hover" href=${logoutHref(logoutPath)}>ログアウト</a>
+              </div>
+            `
           : null}
         <p class="text-sm text-base-content/55" aria-live="polite">${boardMessage}</p>
         ${loadError
@@ -413,9 +469,6 @@ function ArticleEngagement(props) {
       <section class="engagement-comments space-y-4" aria-labelledby="engagement-comments-title">
         <header class="space-y-1">
           <h2 id="engagement-comments-title" class="text-base font-semibold tracking-tight">コメント</h2>
-          <p class="text-base-content/55 text-sm leading-relaxed">
-            コメント投稿はXアカウントでのログイン後に有効になります。
-          </p>
         </header>
 
         ${loading
@@ -424,36 +477,71 @@ function ArticleEngagement(props) {
             ? html`<p class="text-sm text-base-content/55">まだコメントはありません。</p>`
             : html`
                 <ul class="engagement-comment-list space-y-4">
-                  ${comments.map(
-                    (comment) => html`
+                  ${comments.map((comment) => {
+                    const profileHref = xProfileHref(comment.username);
+                    const avatar = comment.avatarUrl
+                      ? html`<img
+                          class="engagement-comment-avatar"
+                          src=${comment.avatarUrl}
+                          alt=""
+                          width="40"
+                          height="40"
+                          loading="lazy"
+                        />`
+                      : html`<span class="engagement-comment-avatar is-fallback" aria-hidden="true">X</span>`;
+                    const identity = html`
+                      <div class="min-w-0">
+                        <p class="engagement-comment-name">
+                          ${comment.displayName || comment.username || "anonymous"}
+                          ${comment.username
+                            ? html`<span class="engagement-comment-handle">@${comment.username}</span>`
+                            : null}
+                        </p>
+                        <time class="engagement-comment-time" datetime=${comment.createdAt}>
+                          ${formatTime(comment.createdAt)}
+                        </time>
+                      </div>
+                    `;
+                    return html`
                       <li class="engagement-comment">
                         <div class="engagement-comment-meta">
-                          ${comment.avatarUrl
-                            ? html`<img
-                                class="engagement-comment-avatar"
-                                src=${comment.avatarUrl}
-                                alt=""
-                                width="32"
-                                height="32"
-                                loading="lazy"
-                              />`
-                            : html`<span class="engagement-comment-avatar is-fallback" aria-hidden="true">X</span>`}
-                          <div class="min-w-0">
-                            <p class="engagement-comment-name">
-                              ${comment.displayName || comment.username || "anonymous"}
-                              ${comment.username
-                                ? html`<span class="engagement-comment-handle">@${comment.username}</span>`
-                                : null}
-                            </p>
-                            <time class="engagement-comment-time" datetime=${comment.createdAt}>
-                              ${formatTime(comment.createdAt)}
-                            </time>
-                          </div>
+                          ${profileHref
+                            ? html`
+                                <a
+                                  class="engagement-comment-author"
+                                  href=${profileHref}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  aria-label=${`@${comment.username} のXプロフィールを開く`}
+                                >
+                                  ${avatar}
+                                  ${identity}
+                                </a>
+                              `
+                            : html`
+                                <div class="engagement-comment-author is-static">
+                                  ${avatar}
+                                  ${identity}
+                                </div>
+                              `}
+                          ${comment.mine
+                            ? html`
+                                <button
+                                  type="button"
+                                  class="engagement-comment-delete btn btn-ghost btn-xs"
+                                  disabled=${commentBusy}
+                                  aria-label="このコメントを削除"
+                                  onClick=${() => void deleteComment(comment)}
+                                >
+                                  削除
+                                </button>
+                              `
+                            : null}
                         </div>
                         <p class="engagement-comment-body">${comment.body}</p>
                       </li>
-                    `,
-                  )}
+                    `;
+                  })}
                 </ul>
               `}
 
@@ -493,9 +581,10 @@ function ArticleEngagement(props) {
           ${authenticated
             ? html`
                 <div class="flex flex-wrap items-center gap-3">
-                  <button type="submit" class="btn btn-primary btn-sm min-h-12" disabled=${commentBusy}>
+                  <button type="submit" class="btn btn-primary btn-sm min-h-8" disabled=${commentBusy}>
                     ${commentBusy ? "送信中…" : "コメントする"}
                   </button>
+                  <a class="link link-hover text-sm" href=${logoutHref(logoutPath)}>ログアウト</a>
                 </div>
               `
             : null}

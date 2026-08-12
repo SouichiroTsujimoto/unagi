@@ -40,7 +40,7 @@ func main() {
 	logoFlag := flag.String("logo", "", "include ASCII logo in the startup banner (true|false)")
 	tuiFlag := flag.String("tui", "", "use the Bubble Tea development TUI (true|false)")
 	addr := flag.String("addr", ":8080", "listen address shown in the banner")
-	dbDriverFlag := flag.String("db-driver", "", "database driver shown/passed to the server (sqlite|postgres)")
+	dbDriverFlag := flag.String("db-driver", "", "database driver shown/passed to the server (postgres)")
 	dbDSNFlag := flag.String("db", "", "database DSN shown/passed to the server")
 	flag.Parse()
 

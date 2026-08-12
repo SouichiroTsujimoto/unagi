@@ -1,5 +1,6 @@
 import '../vendor/is-land.js';
 import './admin-auth.js';
+import './admin-comments.js';
 import './admin-stickers.js';
 import './article-editor.js';
 import './article-engagement.js';

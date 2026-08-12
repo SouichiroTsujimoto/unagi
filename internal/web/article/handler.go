@@ -6,9 +6,9 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/labstack/echo/v4"
 	"github.com/SouichiroTsujimoto/unagi/internal/feature/article"
 	"github.com/SouichiroTsujimoto/unagi/internal/web/layout"
+	"github.com/labstack/echo/v4"
 )
 
 type Handler struct {

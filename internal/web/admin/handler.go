@@ -1,6 +1,7 @@
 package admin
 
 import (
+	"encoding/json"
 	"errors"
 	"log/slog"
 	"net/http"
@@ -8,43 +9,42 @@ import (
 	"strings"
 	"time"
 
-	"github.com/SouichiroTsujimoto/unagi/internal/feature/adminauth"
 	"github.com/SouichiroTsujimoto/unagi/internal/feature/article"
+	featureauth "github.com/SouichiroTsujimoto/unagi/internal/feature/auth"
 	"github.com/SouichiroTsujimoto/unagi/internal/feature/engagement"
 	"github.com/SouichiroTsujimoto/unagi/internal/web/layout"
 	"github.com/a-h/templ"
 	"github.com/labstack/echo/v4"
 )
 
-const csrfHeader = "X-CSRF-Token"
-
 type Handler struct {
-	auth       *adminauth.Auth
+	auth       *featureauth.Auth
 	articles   *article.Articles
 	engagement *engagement.Engagement
 	site       layout.Site
 	log        *slog.Logger
 }
 
-func New(auth *adminauth.Auth, articles *article.Articles, eng *engagement.Engagement, site layout.Site, log *slog.Logger) *Handler {
+func New(auth *featureauth.Auth, articles *article.Articles, eng *engagement.Engagement, site layout.Site, log *slog.Logger) *Handler {
 	return &Handler{auth: auth, articles: articles, engagement: eng, site: site, log: log}
 }
 
 func (h *Handler) RequireAuth(next echo.HandlerFunc) echo.HandlerFunc {
 	return func(c echo.Context) error {
-		sess, err := h.sessionFromRequest(c)
-		if err != nil {
+		user, err := h.userFromRequest(c)
+		if err != nil || !user.IsAdmin {
 			if wantsJSON(c) {
 				return echo.NewHTTPError(http.StatusUnauthorized, "unauthorized")
 			}
 			return c.Redirect(http.StatusSeeOther, "/admin/login")
 		}
-		c.Set("admin_session", sess)
+		c.Set("admin_user", user)
 		return next(c)
 	}
 }
 
-func (h *Handler) RequireCSRF(next echo.HandlerFunc) echo.HandlerFunc {
+// RequireOrigin rejects cross-site mutating requests (SameSite=Lax cookie companion).
+func (h *Handler) RequireOrigin(next echo.HandlerFunc) echo.HandlerFunc {
 	return func(c echo.Context) error {
 		if c.Request().Method == http.MethodGet || c.Request().Method == http.MethodHead {
 			return next(c)
@@ -53,24 +53,16 @@ func (h *Handler) RequireCSRF(next echo.HandlerFunc) echo.HandlerFunc {
 		if origin != "" && !h.auth.ValidOrigin(origin) {
 			return echo.NewHTTPError(http.StatusForbidden, "invalid origin")
 		}
-		sess, _ := c.Get("admin_session").(adminauth.Session)
-		token := c.Request().Header.Get(csrfHeader)
-		if token == "" {
-			token = c.FormValue("csrf")
-		}
-		if token == "" || token != sess.CSRFToken {
-			return echo.NewHTTPError(http.StatusForbidden, "invalid csrf token")
-		}
 		return next(c)
 	}
 }
 
-func (h *Handler) sessionFromRequest(c echo.Context) (adminauth.Session, error) {
-	cookie, err := c.Cookie(adminauth.CookieName)
+func (h *Handler) userFromRequest(c echo.Context) (featureauth.User, error) {
+	cookie, err := c.Cookie(featureauth.CookieName)
 	if err != nil || cookie.Value == "" {
-		return adminauth.Session{}, adminauth.ErrUnauthorized
+		return featureauth.User{}, featureauth.ErrUnauthorized
 	}
-	return h.auth.LookupSession(c.Request().Context(), cookie.Value)
+	return h.auth.ParseAccessToken(cookie.Value)
 }
 
 func wantsJSON(c echo.Context) bool {
@@ -78,25 +70,31 @@ func wantsJSON(c echo.Context) bool {
 		strings.HasPrefix(c.Path(), "/api/")
 }
 
-func (h *Handler) setSessionCookie(c echo.Context, raw string) {
+func (h *Handler) setSessionCookie(c echo.Context, user featureauth.User) {
+	maxAge := int(h.auth.SessionTTL().Seconds())
+	if !user.ExpiresAt.IsZero() {
+		if sec := int(time.Until(user.ExpiresAt).Seconds()); sec > 0 {
+			maxAge = sec
+		}
+	}
 	c.SetCookie(&http.Cookie{
-		Name:     adminauth.CookieName,
-		Value:    raw,
+		Name:     featureauth.CookieName,
+		Value:    user.AccessToken,
 		Path:     "/",
 		HttpOnly: true,
-		SameSite: http.SameSiteStrictMode,
+		SameSite: http.SameSiteLaxMode,
 		Secure:   h.auth.SecureCookies(),
-		Expires:  time.Now().Add(h.auth.SessionTTL()),
+		MaxAge:   maxAge,
 	})
 }
 
 func (h *Handler) clearSessionCookie(c echo.Context) {
 	c.SetCookie(&http.Cookie{
-		Name:     adminauth.CookieName,
+		Name:     featureauth.CookieName,
 		Value:    "",
 		Path:     "/",
 		HttpOnly: true,
-		SameSite: http.SameSiteStrictMode,
+		SameSite: http.SameSiteLaxMode,
 		Secure:   h.auth.SecureCookies(),
 		MaxAge:   -1,
 		Expires:  time.Unix(0, 0),
@@ -109,25 +107,10 @@ func (h *Handler) render(c echo.Context, component templ.Component) error {
 }
 
 func (h *Handler) LoginPage(c echo.Context) error {
-	if _, err := h.sessionFromRequest(c); err == nil {
+	if user, err := h.userFromRequest(c); err == nil && user.IsAdmin {
 		return c.Redirect(http.StatusSeeOther, "/admin")
 	}
-	need, _ := h.auth.NeedsBootstrap(c.Request().Context())
-	if need {
-		return c.Redirect(http.StatusSeeOther, "/admin/setup")
-	}
 	return h.render(c, LoginPage(h.site))
-}
-
-func (h *Handler) SetupPage(c echo.Context) error {
-	need, err := h.auth.NeedsBootstrap(c.Request().Context())
-	if err != nil {
-		return err
-	}
-	if !need {
-		return c.Redirect(http.StatusSeeOther, "/admin/login")
-	}
-	return h.render(c, SetupPage(h.site))
 }
 
 func (h *Handler) Index(c echo.Context) error {
@@ -136,13 +119,11 @@ func (h *Handler) Index(c echo.Context) error {
 		h.log.Error("list all articles", "err", err)
 		return echo.NewHTTPError(http.StatusInternalServerError, "internal error")
 	}
-	sess := c.Get("admin_session").(adminauth.Session)
-	return h.render(c, IndexPage(h.site, items, sess.CSRFToken))
+	return h.render(c, IndexPage(h.site, items))
 }
 
 func (h *Handler) NewArticlePage(c echo.Context) error {
-	sess := c.Get("admin_session").(adminauth.Session)
-	return h.render(c, EditPage(h.site, article.Article{Type: "tech"}, sess.CSRFToken, true))
+	return h.render(c, EditPage(h.site, article.Article{Type: "tech"}, true))
 }
 
 func (h *Handler) EditArticlePage(c echo.Context) error {
@@ -157,23 +138,39 @@ func (h *Handler) EditArticlePage(c echo.Context) error {
 	if err != nil {
 		return err
 	}
-	sess := c.Get("admin_session").(adminauth.Session)
-	return h.render(c, EditPage(h.site, item, sess.CSRFToken, false))
-}
-
-func (h *Handler) PasskeysPage(c echo.Context) error {
-	creds, err := h.auth.ListCredentials(c.Request().Context())
-	if err != nil {
-		return err
-	}
-	sess := c.Get("admin_session").(adminauth.Session)
-	return h.render(c, PasskeysPage(h.site, creds, sess.CSRFToken))
+	return h.render(c, EditPage(h.site, item, false))
 }
 
 func (h *Handler) Logout(c echo.Context) error {
-	if cookie, err := c.Cookie(adminauth.CookieName); err == nil {
-		_ = h.auth.DestroySession(c.Request().Context(), cookie.Value)
-	}
 	h.clearSessionCookie(c)
 	return c.Redirect(http.StatusSeeOther, "/admin/login")
+}
+
+func (h *Handler) BeginLogin(c echo.Context) error {
+	raw, err := h.auth.BeginPasskeyLogin(c.Request().Context())
+	if err != nil {
+		h.log.Error("begin passkey login", "err", err)
+		return echo.NewHTTPError(http.StatusInternalServerError, "internal error")
+	}
+	return c.JSONBlob(http.StatusOK, raw)
+}
+
+func (h *Handler) FinishLoginAPI(c echo.Context) error {
+	var body struct {
+		ChallengeID        string          `json:"challenge_id"`
+		CredentialResponse json.RawMessage `json:"credential_response"`
+	}
+	if err := c.Bind(&body); err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, "invalid json")
+	}
+	user, err := h.auth.FinishPasskeyLogin(c.Request().Context(), body.ChallengeID, body.CredentialResponse)
+	if errors.Is(err, featureauth.ErrForbidden) {
+		return echo.NewHTTPError(http.StatusForbidden, "not an admin")
+	}
+	if err != nil {
+		h.log.Error("finish passkey login", "err", err)
+		return echo.NewHTTPError(http.StatusUnauthorized, "login failed")
+	}
+	h.setSessionCookie(c, user)
+	return c.JSON(http.StatusOK, map[string]any{"ok": true})
 }

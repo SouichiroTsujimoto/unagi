@@ -19,7 +19,6 @@ function stickerLabel(item) {
 }
 
 function AdminStickers(props) {
-  const csrf = props.csrf || "";
   const articleId = props.articleId || "";
   const [stickers, setStickers] = useState([]);
   const [selected, setSelected] = useState(() => new Set());
@@ -33,7 +32,6 @@ function AdminStickers(props) {
         method,
         headers: {
           "Content-Type": "application/json",
-          "X-CSRF-Token": csrf,
           Accept: "application/json",
         },
         body: body ? JSON.stringify(body) : undefined,
@@ -50,7 +48,7 @@ function AdminStickers(props) {
       }
       return data;
     },
-    [csrf],
+    [],
   );
 
   const load = useCallback(async () => {
@@ -221,4 +219,4 @@ function AdminStickers(props) {
   `;
 }
 
-register(AdminStickers, "admin-stickers", ["csrf", "article-id"], { shadow: false });
+register(AdminStickers, "admin-stickers", ["article-id"], { shadow: false });

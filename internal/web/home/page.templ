@@ -18,8 +18,8 @@ templ Page(meta layout.PageMeta, site layout.Site, articles []article.Article) {
 						class="h-12 w-12 rounded-xl object-cover"
 						decoding="async"
 					/>
-					<div class="space-y-1">
-						<h1 class="text-xl tracking-tight">
+					<div class="space-y-0">
+						<h1 class="text-lg tracking-tight">
 							Hello from
 							<a
 								href="/about"
@@ -27,9 +27,7 @@ templ Page(meta layout.PageMeta, site layout.Site, articles []article.Article) {
 								rel="noopener noreferrer"
 							>wuhu1sland</a>
 						</h1>
-						if site.Description != "" {
-							<p class="text-base-content/55 text-[15px] leading-relaxed">{ site.Description }</p>
-						}
+						<p class="text-base-content/55 text-[15px] leading-relaxed">wuhu1slandの技術ノート</p>
 					</div>
 				</div>
 			</header>

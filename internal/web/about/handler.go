@@ -3,8 +3,8 @@ package about
 import (
 	"log/slog"
 
-	"github.com/labstack/echo/v4"
 	"github.com/SouichiroTsujimoto/unagi/internal/web/layout"
+	"github.com/labstack/echo/v4"
 )
 
 type Handler struct {
@@ -18,7 +18,7 @@ func New(site layout.Site, log *slog.Logger) *Handler {
 
 func (handler *Handler) Show(c echo.Context) error {
 	meta := layout.PageMeta{
-		Title:       handler.site.TitleWithSite("me"),
+		Title:       handler.site.TitleWithSite("Me"),
 		Description: handler.site.Description,
 		Canonical:   handler.site.AbsoluteURL("/about"),
 		OGImage:     handler.site.AbsoluteURL("/static/wuhu1sland-2.png"),

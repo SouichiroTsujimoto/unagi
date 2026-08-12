@@ -17,39 +17,13 @@ import (
 )
 
 type Config struct {
-	Address          string
-	Domains          []string
-	ACMEEmail        string
-	CertMagicStorage string
-	DBPath           string
-	Version          string
-	Banner           string // "full" (ASCII logo + box) or "compact" (box only)
+	Address string
+	DBPath  string
+	Version string
+	Banner  string // "full" (ASCII logo + box) or "compact" (box only)
 }
 
 func Run(handler http.Handler, config Config, log *slog.Logger) error {
-	if len(config.Domains) > 0 {
-		urls := make([]string, 0, len(config.Domains))
-		for _, domain := range config.Domains {
-			urls = append(urls, "https://"+domain)
-		}
-		pid := strconv.Itoa(os.Getpid())
-		if terminal.ShouldPrintListenBanner() {
-			terminal.PrintListenBanner(os.Stdout, config.Banner, terminal.BannerInfo{
-				Version: config.Version,
-				DBPath:  config.DBPath,
-				Mode:    "https",
-				PID:     pid,
-				URLs:    urls,
-			})
-		}
-		log.Info("listening (HTTPS via CertMagic)", "url", urls, "pid", pid)
-		terminal.NotifyDevReload()
-		if err := runHTTPS(handler, config); err != nil {
-			return fmt.Errorf("serve HTTPS: %w", err)
-		}
-		return nil
-	}
-
 	ln, err := net.Listen("tcp", config.Address)
 	if err != nil {
 		return fmt.Errorf("listen HTTP: %w", err)

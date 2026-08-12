@@ -3,26 +3,14 @@ package account_test
 import (
 	"context"
 	"errors"
-	"path/filepath"
 	"testing"
 
-	"github.com/SouichiroTsujimoto/unagi/internal/feature/account"
 	"github.com/SouichiroTsujimoto/unagi/internal/db"
+	"github.com/SouichiroTsujimoto/unagi/internal/feature/account"
 )
 
 func TestAccountsLifecycle(t *testing.T) {
-	database, err := db.Open(db.Config{
-		Driver: db.DriverSQLite,
-		DSN:    filepath.Join(t.TempDir(), "test.db"),
-	})
-	if err != nil {
-		t.Fatalf("open test database: %v", err)
-	}
-	t.Cleanup(func() {
-		if err := database.Close(); err != nil {
-			t.Errorf("close test database: %v", err)
-		}
-	})
+	database := db.OpenTest(t)
 
 	ctx := context.Background()
 	accounts := account.New(database)

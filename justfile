@@ -61,6 +61,7 @@ tidy: generate
     go mod tidy
 
 test: generate
+    # Schema: supabase/migrations (local: `just supabase-start`, CI: applied in OpenTest)
     go test ./...
 
 vet: generate
@@ -68,6 +69,49 @@ vet: generate
 
 build: generate css
     CGO_ENABLED=0 go build -o bin/server ./cmd/server
+
+# Local Supabase (Postgres + Auth + Storage). Requires Docker + supabase CLI.
+supabase-start:
+    supabase start
+
+supabase-stop:
+    supabase stop
+
+supabase-status:
+    supabase status -o env
+
+# One-time GCP + GitHub setup for deploys. Safe to re-run. See deploy/cloudrun/README.md.
+cloudrun-bootstrap:
+    bash deploy/cloudrun/bootstrap.sh
+
+# Store a secret value in Secret Manager. Prompts; nothing is written to disk.
+cloudrun-secret name="":
+    bash deploy/cloudrun/secret.sh {{name}}
+
+# Manual release. Pushing to main normally does this via GitHub Actions.
+cloudrun-release:
+    bash deploy/cloudrun/build.sh
+    bash deploy/cloudrun/deploy.sh
+
+# Redeploy the current image (e.g. after changing site env vars).
+cloudrun-deploy:
+    bash deploy/cloudrun/deploy.sh
+
+# Tail the last 50 Cloud Run log lines.
+cloudrun-logs:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    source deploy/cloudrun/config.sh
+    gcloud run services logs read "${CLOUD_RUN_SERVICE}" \
+      --project="${GCP_PROJECT}" --region="${GCP_REGION}" --limit=50
+
+# Linux amd64 binary (Cloud Run / containers).
+build-linux:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    version="$(git describe --tags --always --dirty 2>/dev/null || date -u +%Y%m%d%H%M%S)"
+    GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build -ldflags "-X main.version=${version}" -o bin/server-linux-amd64 ./cmd/server
+    echo "wrote bin/server-linux-amd64 (${version})"
 
 # Generate custom listen-banner ASCII from [banner].image (ascii-image-converter).
 # No-op when image is unset. Writes sibling <name>-ascii.txt (+ .sha256); commit both.
@@ -142,4 +186,4 @@ check: generate css
     CGO_ENABLED=0 go build -o bin/server ./cmd/server
 
 clean:
-    rm -rf bin tmp *.db *.db-* .certmagic
+    rm -rf bin tmp *.db *.db-*

@@ -63,7 +63,16 @@ templ ShowPage(meta layout.PageMeta, post article.Article) {
 					@templ.Raw(post.HTML)
 					<article-linkcards class="contents"></article-linkcards>
 				</div>
-				<section class="border-t border-base-content/10 pt-10">
+				<div class="article-end">
+					<span class="article-end-line" aria-hidden="true"></span>
+					<p class="article-end-label">
+						<span class="article-end-mark" aria-hidden="true">⠿</span>
+						<span>最後までお読みいただき、ありがとうございます</span>
+						<span class="article-end-mark" aria-hidden="true">⠿</span>
+					</p>
+					<span class="article-end-line" aria-hidden="true"></span>
+				</div>
+				<section>
 					<is-land on:visible>
 						<template data-island>
 							<article-engagement slug={ post.Slug }></article-engagement>

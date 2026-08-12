@@ -5,9 +5,9 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/labstack/echo/v4"
 	"github.com/SouichiroTsujimoto/unagi/internal/feature/article"
 	"github.com/SouichiroTsujimoto/unagi/internal/web/layout"
+	"github.com/labstack/echo/v4"
 )
 
 type Handler struct {
@@ -33,7 +33,7 @@ func (handler *Handler) Show(c echo.Context) error {
 		return echo.NewHTTPError(http.StatusInternalServerError, "internal error")
 	}
 	meta := layout.PageMeta{
-		Title:       handler.site.Name,
+		Title:       handler.site.TitleWithSite("Posts"),
 		Description: handler.site.Description,
 		Canonical:   handler.site.AbsoluteURL("/"),
 		OGImage:     handler.site.AbsoluteURL("/static/wuhu1sland-1.png"),

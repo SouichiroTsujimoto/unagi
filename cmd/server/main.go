@@ -1,7 +1,6 @@
 package main
 
 import (
-	"encoding/hex"
 	"flag"
 	"log/slog"
 	"os"
@@ -12,7 +11,7 @@ import (
 	"github.com/SouichiroTsujimoto/unagi/internal/app"
 	"github.com/SouichiroTsujimoto/unagi/internal/config"
 	"github.com/SouichiroTsujimoto/unagi/internal/db"
-	"github.com/SouichiroTsujimoto/unagi/internal/feature/adminauth"
+	featureauth "github.com/SouichiroTsujimoto/unagi/internal/feature/auth"
 	"github.com/SouichiroTsujimoto/unagi/internal/terminal"
 	"github.com/SouichiroTsujimoto/unagi/internal/web/layout"
 )
@@ -41,53 +40,61 @@ func main() {
 		dbDSN = v
 	}
 
-	addr := flag.String("addr", ":8080", "listen address for development HTTP mode")
-	dbDriverFlag := flag.String("db-driver", dbDriver, "database driver: sqlite or postgres")
-	dbDSNFlag := flag.String("db", dbDSN, "database DSN (sqlite path or postgres URL)")
-	domain := flag.String("domain", "", "comma-separated domains for CertMagic HTTPS (empty = HTTP only)")
-	email := flag.String("email", "", "ACME contact email for CertMagic")
+	addrDefault := ":8080"
+	if v := strings.TrimSpace(os.Getenv("PORT")); v != "" {
+		if strings.HasPrefix(v, ":") {
+			addrDefault = v
+		} else {
+			addrDefault = ":" + v
+		}
+	}
+
+	addr := flag.String("addr", addrDefault, "listen address (PORT env overrides default)")
+	dbDriverFlag := flag.String("db-driver", dbDriver, "database driver (postgres)")
+	dbDSNFlag := flag.String("db", dbDSN, "database DSN (postgres URL)")
 	banner := flag.String("banner", bannerDefault, "startup banner style: full or compact")
 	flag.Parse()
 
+	listenAddr := *addr
+	if v := strings.TrimSpace(os.Getenv("PORT")); v != "" {
+		if strings.HasPrefix(v, ":") {
+			listenAddr = v
+		} else {
+			listenAddr = ":" + v
+		}
+	}
+
 	site := layoutSite(file)
-	authCfg := adminAuthConfig(site)
-	mediaBackend := envOr("UNIGO_MEDIA_BACKEND", "local")
+	authCfg := authConfig(site)
+	mediaBackend := envOr("UNIGO_MEDIA_BACKEND", "supabase")
 	mediaDir := envOr("UNIGO_MEDIA_DIR", "data/media")
-	certStorage := envOr("UNIGO_CERTMAGIC_STORAGE", "data/certmagic")
-	_ = app.EnsureDataDirs("data", mediaDir, certStorage)
+	if mediaBackend == "local" {
+		_ = app.EnsureDataDirs("data", mediaDir)
+	}
 
 	if err := app.Run(app.Config{
-		Address: *addr,
+		Address: listenAddr,
 		DB: db.Config{
 			Driver: *dbDriverFlag,
 			DSN:    *dbDSNFlag,
 		},
-		Domains:          splitCSV(*domain),
-		ACMEEmail:        *email,
-		CertMagicStorage: certStorage,
-		Version:          version,
-		Banner:           *banner,
-		Site:             site,
-		Auth:             authCfg,
-		MediaBackend:     mediaBackend,
-		MediaLocalDir:    mediaDir,
-		GCSBucket:        os.Getenv("UNIGO_GCS_BUCKET"),
-		GCSPrefix:        os.Getenv("UNIGO_GCS_PREFIX"),
+		Version:            version,
+		Banner:             *banner,
+		Site:               site,
+		Auth:               authCfg,
+		MediaBackend:       mediaBackend,
+		MediaLocalDir:      mediaDir,
+		MediaPublicBase:    os.Getenv("UNIGO_MEDIA_PUBLIC_BASE"),
+		MediaBucket:        envOr("UNIGO_MEDIA_BUCKET", "images"),
+		SupabaseURL:        envOr("UNIGO_SUPABASE_URL", authCfg.SupabaseURL),
+		SupabaseServiceKey: os.Getenv("UNIGO_SUPABASE_SERVICE_ROLE_KEY"),
 	}); err != nil {
 		slog.Error("application stopped", "err", err)
 		os.Exit(1)
 	}
 }
 
-func adminAuthConfig(site layout.Site) adminauth.Config {
-	origins := splitCSV(os.Getenv("UNIGO_WEBAUTHN_ORIGINS"))
-	if len(origins) == 0 && site.BaseURL != "" {
-		origins = []string{strings.TrimRight(site.BaseURL, "/")}
-	}
-	rpid := strings.TrimSpace(os.Getenv("UNIGO_WEBAUTHN_RPID"))
-	if rpid == "" {
-		rpid = hostFromBaseURL(site.BaseURL)
-	}
+func authConfig(site layout.Site) featureauth.Config {
 	secure := strings.HasPrefix(site.BaseURL, "https://")
 	if v, ok := envBool("UNIGO_SECURE_COOKIES"); ok {
 		secure = v
@@ -98,40 +105,20 @@ func adminAuthConfig(site layout.Site) adminauth.Config {
 			ttl = d
 		}
 	}
-	return adminauth.Config{
-		RPDisplayName:      envOr("UNIGO_WEBAUTHN_RP_NAME", site.Name),
-		RPID:               rpid,
-		RPOrigins:          origins,
-		BootstrapTokenHash: decodeBootstrapHash(os.Getenv("UNIGO_BOOTSTRAP_TOKEN_HASH")),
-		SessionTTL:         ttl,
-		SecureCookies:      secure,
+	origins := splitCSV(os.Getenv("UNIGO_ALLOWED_ORIGINS"))
+	if len(origins) == 0 && site.BaseURL != "" {
+		origins = []string{strings.TrimRight(site.BaseURL, "/")}
 	}
-}
-
-func decodeBootstrapHash(raw string) []byte {
-	raw = strings.TrimSpace(raw)
-	if raw == "" {
-		return nil
+	return featureauth.Config{
+		SupabaseURL:    os.Getenv("UNIGO_SUPABASE_URL"),
+		AnonKey:        os.Getenv("UNIGO_SUPABASE_ANON_KEY"),
+		JWTSecret:      os.Getenv("UNIGO_SUPABASE_JWT_SECRET"),
+		AdminUserIDs:   splitCSV(os.Getenv("UNIGO_ADMIN_USER_IDS")),
+		AllowedOrigins: origins,
+		SiteBaseURL:    site.BaseURL,
+		SessionTTL:     ttl,
+		SecureCookies:  secure,
 	}
-	if b, err := hex.DecodeString(raw); err == nil && len(b) == 32 {
-		return b
-	}
-	// Accept raw token for local convenience; hash it.
-	return adminauth.HashToken(raw)
-}
-
-func hostFromBaseURL(base string) string {
-	base = strings.TrimSpace(base)
-	base = strings.TrimPrefix(base, "https://")
-	base = strings.TrimPrefix(base, "http://")
-	if i := strings.IndexByte(base, '/'); i >= 0 {
-		base = base[:i]
-	}
-	if i := strings.IndexByte(base, ':'); i >= 0 {
-		// keep host for localhost:8080 — WebAuthn RPID should be hostname without port
-		base = base[:i]
-	}
-	return base
 }
 
 func envOr(key, fallback string) string {
@@ -175,10 +162,23 @@ func splitCSV(value string) []string {
 }
 
 func layoutSite(file config.File) layout.Site {
-	return layout.Site{
+	site := layout.Site{
 		Name:        file.Site.Name,
 		Description: file.Site.Description,
 		BaseURL:     file.Site.BaseURL,
 		Author:      file.Site.Author,
 	}
+	if v := strings.TrimSpace(os.Getenv("UNIGO_SITE_NAME")); v != "" {
+		site.Name = v
+	}
+	if v := strings.TrimSpace(os.Getenv("UNIGO_SITE_DESCRIPTION")); v != "" {
+		site.Description = v
+	}
+	if v := strings.TrimSpace(os.Getenv("UNIGO_SITE_BASE_URL")); v != "" {
+		site.BaseURL = strings.TrimRight(v, "/")
+	}
+	if v := strings.TrimSpace(os.Getenv("UNIGO_SITE_AUTHOR")); v != "" {
+		site.Author = v
+	}
+	return site
 }

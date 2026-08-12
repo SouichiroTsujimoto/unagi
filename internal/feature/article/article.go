@@ -106,8 +106,9 @@ type SyncMarkdownExpander interface {
 
 // Articles is the article store backed by Bun.
 type Articles struct {
-	db     *bun.DB
-	embeds MarkdownExpander
+	db        *bun.DB
+	embeds    MarkdownExpander
+	mediaBase string
 }
 
 func New(db *bun.DB) *Articles {
@@ -119,9 +120,15 @@ func (a *Articles) SetEmbeds(embeds MarkdownExpander) {
 	a.embeds = embeds
 }
 
+// SetMediaPublicBase rewrites Markdown `/images/...` paths to the Storage public base before HTML render.
+func (a *Articles) SetMediaPublicBase(base string) {
+	a.mediaBase = strings.TrimRight(strings.TrimSpace(base), "/")
+}
+
 // RenderHTML expands embeds (when configured) then converts Markdown to sanitized HTML.
 // Link cards use cache/instant providers only; pending cards hydrate client-side.
 func (a *Articles) RenderHTML(ctx context.Context, body string) (string, error) {
+	body = RewriteImageURLs(body, a.mediaBase)
 	if a != nil && a.embeds != nil {
 		expanded, err := a.embeds.ExpandMarkdown(ctx, body)
 		if err == nil {
@@ -133,6 +140,7 @@ func (a *Articles) RenderHTML(ctx context.Context, body string) (string, error) 
 
 // RenderHTMLSync resolves every link card before returning HTML.
 func (a *Articles) RenderHTMLSync(ctx context.Context, body string) (string, error) {
+	body = RewriteImageURLs(body, a.mediaBase)
 	if a != nil && a.embeds != nil {
 		if sync, ok := a.embeds.(SyncMarkdownExpander); ok {
 			expanded, err := sync.ExpandMarkdownSync(ctx, body)

@@ -3,7 +3,6 @@ package engagement
 import (
 	"context"
 	"errors"
-	"strings"
 	"testing"
 	"time"
 
@@ -13,14 +12,7 @@ import (
 
 func openTestEngagement(t *testing.T) (*Engagement, *article.Articles) {
 	t.Helper()
-	database, err := db.Open(db.Config{
-		Driver: db.DriverSQLite,
-		DSN:    "file:" + strings.ReplaceAll(t.Name(), "/", "_") + "?mode=memory&cache=shared",
-	})
-	if err != nil {
-		t.Fatal(err)
-	}
-	t.Cleanup(func() { _ = database.Close() })
+	database := db.OpenTest(t)
 	articles := article.New(database)
 	return New(database, articles), articles
 }
@@ -47,6 +39,15 @@ func publishHello(t *testing.T, articles *article.Articles) article.Article {
 	return published
 }
 
+func testAuthor(id string) Author {
+	return Author{
+		XUserID:     id,
+		Username:    "wuhu",
+		DisplayName: "wuhu",
+		AvatarURL:   "https://example.com/a.png",
+	}
+}
+
 func TestGetSnapshotAndAddEmoji(t *testing.T) {
 	t.Parallel()
 	eng, articles := openTestEngagement(t)
@@ -54,11 +55,11 @@ func TestGetSnapshotAndAddEmoji(t *testing.T) {
 	ctx := context.Background()
 	now := time.Date(2026, 8, 12, 0, 0, 0, 0, time.UTC)
 
-	snap, err := eng.GetSnapshot(ctx, "hello", now)
+	snap, err := eng.GetSnapshot(ctx, "hello", now, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(snap.Stickers) != 0 || len(snap.Comments) != 0 {
+	if len(snap.Stickers) != 0 || len(snap.Comments) != 0 || snap.Authenticated {
 		t.Fatalf("expected empty snapshot, got %+v", snap)
 	}
 	if len(snap.AllowedEmoji) == 0 || snap.LoginPath != LoginPath {
@@ -66,10 +67,9 @@ func TestGetSnapshotAndAddEmoji(t *testing.T) {
 	}
 
 	sticker, err := eng.AddEmojiSticker(ctx, "hello", now, AddEmojiInput{
-		Emoji:       "🍣",
-		X:           0.25,
-		Y:           0.75,
-		VisitorHash: HashVisitor("visitor-1"),
+		Emoji: "🍣",
+		X:     0.25,
+		Y:     0.75,
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -78,62 +78,58 @@ func TestGetSnapshotAndAddEmoji(t *testing.T) {
 		t.Fatalf("sticker=%+v", sticker)
 	}
 
-	snap, err = eng.GetSnapshot(ctx, "hello", now)
+	viewer := &Viewer{Username: "wuhu", DisplayName: "wuhu", AvatarURL: "https://example.com/a.png"}
+	snap, err = eng.GetSnapshot(ctx, "hello", now, viewer)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(snap.Stickers) != 1 {
-		t.Fatalf("stickers=%d", len(snap.Stickers))
+	if len(snap.Stickers) != 1 || !snap.Authenticated || snap.Viewer == nil || snap.LogoutPath == "" {
+		t.Fatalf("snap=%+v", snap)
 	}
 }
 
-func TestAddEmojiValidationAndLimits(t *testing.T) {
+func TestAddEmojiValidationAndBoardLimit(t *testing.T) {
 	t.Parallel()
 	eng, articles := openTestEngagement(t)
 	publishHello(t, articles)
 	ctx := context.Background()
 	now := time.Now()
-	hash := HashVisitor("visitor-limit")
 
 	_, err := eng.AddEmojiSticker(ctx, "hello", now, AddEmojiInput{
-		Emoji:       "💣",
-		X:           0.5,
-		Y:           0.5,
-		VisitorHash: hash,
+		Emoji: "💣",
+		X:     0.5,
+		Y:     0.5,
 	})
 	if !errors.Is(err, ErrInvalidInput) {
 		t.Fatalf("want invalid emoji, got %v", err)
 	}
 
 	_, err = eng.AddEmojiSticker(ctx, "hello", now, AddEmojiInput{
-		Emoji:       "👍",
-		X:           1.5,
-		Y:           0.5,
-		VisitorHash: hash,
+		Emoji: "👍",
+		X:     1.5,
+		Y:     0.5,
 	})
 	if !errors.Is(err, ErrInvalidInput) {
 		t.Fatalf("want invalid coord, got %v", err)
 	}
 
-	for i := 0; i < MaxStickersPerVisitorArticle; i++ {
+	for i := 0; i < MaxStickersPerArticle; i++ {
 		_, err := eng.AddEmojiSticker(ctx, "hello", now, AddEmojiInput{
-			Emoji:       "👍",
-			X:           0.1,
-			Y:           float64(i) / 20,
-			VisitorHash: hash,
+			Emoji: "👍",
+			X:     0.1,
+			Y:     float64(i) / float64(MaxStickersPerArticle+1),
 		})
 		if err != nil {
 			t.Fatalf("place %d: %v", i, err)
 		}
 	}
 	_, err = eng.AddEmojiSticker(ctx, "hello", now, AddEmojiInput{
-		Emoji:       "👍",
-		X:           0.2,
-		Y:           0.2,
-		VisitorHash: hash,
+		Emoji: "👍",
+		X:     0.2,
+		Y:     0.2,
 	})
 	if !errors.Is(err, ErrLimitExceeded) {
-		t.Fatalf("want visitor limit, got %v", err)
+		t.Fatalf("want board limit, got %v", err)
 	}
 }
 
@@ -150,30 +146,180 @@ func TestDraftArticleNotFound(t *testing.T) {
 	}); err != nil {
 		t.Fatal(err)
 	}
-	_, err := eng.GetSnapshot(ctx, "draft", time.Now())
+	_, err := eng.GetSnapshot(ctx, "draft", time.Now(), nil)
 	if !errors.Is(err, ErrNotFound) {
 		t.Fatalf("want not found, got %v", err)
 	}
 }
 
-func TestLoginRequiredStubs(t *testing.T) {
+func TestAddAvatarAndComment(t *testing.T) {
 	t.Parallel()
 	eng, articles := openTestEngagement(t)
 	publishHello(t, articles)
 	ctx := context.Background()
 	now := time.Now()
+	author := testAuthor("42")
 
-	_, err := eng.AddAvatarSticker(ctx, "hello", now)
+	_, err := eng.AddAvatarSticker(ctx, "hello", now, Author{}, 0.5, 0.5)
 	if !errors.Is(err, ErrLoginRequired) {
-		t.Fatalf("avatar: %v", err)
+		t.Fatalf("avatar without author: %v", err)
 	}
-	_, err = eng.AddComment(ctx, "hello", now, "nice post")
-	if !errors.Is(err, ErrLoginRequired) {
-		t.Fatalf("comment: %v", err)
+
+	sticker, err := eng.AddAvatarSticker(ctx, "hello", now, author, 0.4, 0.6)
+	if err != nil {
+		t.Fatal(err)
 	}
-	_, err = eng.AddComment(ctx, "hello", now, "")
+	if sticker.Kind != KindAvatar || sticker.Value != author.AvatarURL || sticker.Username != "wuhu" {
+		t.Fatalf("sticker=%+v", sticker)
+	}
+
+	_, err = eng.AddComment(ctx, "hello", now, author, "")
 	if !errors.Is(err, ErrInvalidInput) {
 		t.Fatalf("empty comment: %v", err)
+	}
+	comment, err := eng.AddComment(ctx, "hello", now, author, "nice post")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if comment.Body != "nice post" || comment.Username != "wuhu" {
+		t.Fatalf("comment=%+v", comment)
+	}
+
+	snap, err := eng.GetSnapshot(ctx, "hello", now, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(snap.Stickers) != 1 || len(snap.Comments) != 1 {
+		t.Fatalf("snap=%+v", snap)
+	}
+}
+
+func TestCommentUserLimit(t *testing.T) {
+	t.Parallel()
+	eng, articles := openTestEngagement(t)
+	publishHello(t, articles)
+	ctx := context.Background()
+	now := time.Now()
+	author := testAuthor("99")
+
+	for i := 0; i < MaxCommentsPerUserArticle; i++ {
+		if _, err := eng.AddComment(ctx, "hello", now, author, "c"); err != nil {
+			t.Fatalf("comment %d: %v", i, err)
+		}
+	}
+	_, err := eng.AddComment(ctx, "hello", now, author, "overflow")
+	if !errors.Is(err, ErrLimitExceeded) {
+		t.Fatalf("want user limit, got %v", err)
+	}
+
+	other := testAuthor("100")
+	if _, err := eng.AddComment(ctx, "hello", now, other, "ok"); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestAdminCommentModeration(t *testing.T) {
+	t.Parallel()
+	eng, articles := openTestEngagement(t)
+	post := publishHello(t, articles)
+	ctx := context.Background()
+	now := time.Now()
+	author := testAuthor("7")
+
+	visible, err := eng.AddComment(ctx, "hello", now, author, "keep me")
+	if err != nil {
+		t.Fatal(err)
+	}
+	hiddenSeed, err := eng.SeedCommentWithUser(ctx, post.ID, author, "hide me", CommentStatusVisible, now)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	updated, err := eng.SetCommentStatus(ctx, post.ID, hiddenSeed.ID, CommentStatusHidden)
+	if err != nil || updated.Status != CommentStatusHidden {
+		t.Fatalf("hide=%+v err=%v", updated, err)
+	}
+
+	snap, err := eng.GetSnapshot(ctx, "hello", now, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(snap.Comments) != 1 || snap.Comments[0].ID != visible.ID {
+		t.Fatalf("public comments=%+v", snap.Comments)
+	}
+
+	list, err := eng.ListCommentsByArticleID(ctx, post.ID)
+	if err != nil || len(list) != 2 {
+		t.Fatalf("admin list=%d err=%v", len(list), err)
+	}
+
+	if _, err := eng.SetCommentStatus(ctx, post.ID, hiddenSeed.ID, CommentStatusVisible); err != nil {
+		t.Fatal(err)
+	}
+	n, err := eng.DeleteCommentsByIDs(ctx, post.ID, []int64{hiddenSeed.ID})
+	if err != nil || n != 1 {
+		t.Fatalf("deleted=%d err=%v", n, err)
+	}
+	n, err = eng.DeleteAllComments(ctx, post.ID)
+	if err != nil || n != 1 {
+		t.Fatalf("delete all=%d err=%v", n, err)
+	}
+}
+
+func TestDeleteOwnComment(t *testing.T) {
+	t.Parallel()
+	eng, articles := openTestEngagement(t)
+	publishHello(t, articles)
+	ctx := context.Background()
+	now := time.Now()
+	author := testAuthor("42")
+	other := testAuthor("99")
+
+	mine, err := eng.AddComment(ctx, "hello", now, author, "my comment")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !mine.Mine {
+		t.Fatalf("created comment should be mine: %+v", mine)
+	}
+	theirs, err := eng.AddComment(ctx, "hello", now, other, "other comment")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	viewer := &Viewer{Username: author.Username, DisplayName: author.DisplayName, AvatarURL: author.AvatarURL, XUserID: author.XUserID}
+	snap, err := eng.GetSnapshot(ctx, "hello", now, viewer)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(snap.Comments) != 2 {
+		t.Fatalf("comments=%d", len(snap.Comments))
+	}
+	var sawMine, sawTheirs bool
+	for _, c := range snap.Comments {
+		if c.ID == mine.ID {
+			sawMine = c.Mine
+		}
+		if c.ID == theirs.ID {
+			sawTheirs = c.Mine
+		}
+	}
+	if !sawMine || sawTheirs {
+		t.Fatalf("mine flags wrong: %+v", snap.Comments)
+	}
+
+	if err := eng.DeleteOwnComment(ctx, "hello", now, author, theirs.ID); !errors.Is(err, ErrNotFound) {
+		t.Fatalf("want not found for foreign comment, got %v", err)
+	}
+	if err := eng.DeleteOwnComment(ctx, "hello", now, author, mine.ID); err != nil {
+		t.Fatal(err)
+	}
+	snap, err = eng.GetSnapshot(ctx, "hello", now, viewer)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(snap.Comments) != 1 || snap.Comments[0].ID != theirs.ID {
+		t.Fatalf("after delete: %+v", snap.Comments)
 	}
 }
 
@@ -187,7 +333,7 @@ func TestSeedCommentAppearsInSnapshot(t *testing.T) {
 	if _, err := eng.SeedVisibleComment(ctx, post.ID, "hello from x", "wuhu", "wuhu", "https://example.com/a.png", now); err != nil {
 		t.Fatal(err)
 	}
-	snap, err := eng.GetSnapshot(ctx, "hello", now)
+	snap, err := eng.GetSnapshot(ctx, "hello", now, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -202,17 +348,16 @@ func TestAdminDeleteStickers(t *testing.T) {
 	post := publishHello(t, articles)
 	ctx := context.Background()
 	now := time.Now()
-	hash := HashVisitor("admin-delete")
 
-	a, err := eng.AddEmojiSticker(ctx, "hello", now, AddEmojiInput{Emoji: "🍣", X: 0.1, Y: 0.2, VisitorHash: hash})
+	a, err := eng.AddEmojiSticker(ctx, "hello", now, AddEmojiInput{Emoji: "🍣", X: 0.1, Y: 0.2})
 	if err != nil {
 		t.Fatal(err)
 	}
-	b, err := eng.AddEmojiSticker(ctx, "hello", now, AddEmojiInput{Emoji: "👍", X: 0.3, Y: 0.4, VisitorHash: hash})
+	b, err := eng.AddEmojiSticker(ctx, "hello", now, AddEmojiInput{Emoji: "👍", X: 0.3, Y: 0.4})
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := eng.AddEmojiSticker(ctx, "hello", now, AddEmojiInput{Emoji: "👀", X: 0.5, Y: 0.6, VisitorHash: hash}); err != nil {
+	if _, err := eng.AddEmojiSticker(ctx, "hello", now, AddEmojiInput{Emoji: "👀", X: 0.5, Y: 0.6}); err != nil {
 		t.Fatal(err)
 	}
 

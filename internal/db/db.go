@@ -1,5 +1,5 @@
-// Package db opens a Bun DB and applies SQL migrations.
-// Feature packages depend on *bun.DB; driver/dialect selection stays here.
+// Package db opens a Bun DB. Schema lives in supabase/migrations and is
+// applied by the Supabase CLI and GitHub integration, not at process start.
 package db
 
 import (
@@ -9,33 +9,26 @@ import (
 
 	"github.com/uptrace/bun"
 	"github.com/uptrace/bun/dialect/pgdialect"
-	"github.com/uptrace/bun/dialect/sqlitedialect"
 
 	_ "github.com/jackc/pgx/v5/stdlib"
-	_ "modernc.org/sqlite"
 )
 
-const (
-	DriverSQLite   = "sqlite"
-	DriverPostgres = "postgres"
-)
+const DriverPostgres = "postgres"
 
-// Config selects the database backend.
+// Config selects the database backend (Postgres only).
 type Config struct {
-	Driver string // sqlite | postgres
-	DSN    string // sqlite path or postgres URL / Cloud SQL DSN
+	Driver string // postgres (empty → postgres)
+	DSN    string // postgres URL
 }
 
-// WithDefaults fills empty driver/DSN for local SQLite development.
+// WithDefaults fills empty driver/DSN for local Supabase development.
 func (c Config) WithDefaults() Config {
 	if strings.TrimSpace(c.Driver) == "" {
-		c.Driver = DriverSQLite
+		c.Driver = DriverPostgres
 	}
 	c.Driver = strings.ToLower(strings.TrimSpace(c.Driver))
 	if strings.TrimSpace(c.DSN) == "" {
-		if c.Driver == DriverSQLite {
-			c.DSN = "app.db"
-		}
+		c.DSN = "postgresql://postgres:postgres@127.0.0.1:54322/postgres"
 	}
 	return c
 }
@@ -44,38 +37,31 @@ func (c Config) WithDefaults() Config {
 func (c Config) Label() string {
 	c = c.WithDefaults()
 	if strings.TrimSpace(c.DSN) != "" {
-		return c.DSN
+		return redactDSN(c.DSN)
 	}
 	return c.Driver
 }
 
-// Open connects with the configured driver, builds Bun, and migrates.
-func Open(cfg Config) (*bun.DB, error) {
-	cfg = cfg.WithDefaults()
-
-	switch cfg.Driver {
-	case DriverSQLite:
-		return openSQLite(cfg.DSN)
-	case DriverPostgres:
-		return openPostgres(cfg.DSN)
-	default:
-		return nil, fmt.Errorf("unsupported db driver %q (use sqlite or postgres)", cfg.Driver)
+func redactDSN(dsn string) string {
+	// Avoid printing passwords in the listen banner.
+	if i := strings.Index(dsn, "@"); i > 0 {
+		if scheme := strings.Index(dsn, "://"); scheme >= 0 && scheme < i {
+			user := dsn[scheme+3 : i]
+			if colon := strings.Index(user, ":"); colon >= 0 {
+				return dsn[:scheme+3] + user[:colon] + ":***" + dsn[i:]
+			}
+		}
 	}
+	return dsn
 }
 
-func openSQLite(dsn string) (*bun.DB, error) {
-	sqlDB, err := sql.Open("sqlite", dsn)
-	if err != nil {
-		return nil, fmt.Errorf("open sqlite: %w", err)
+// Open connects with pgx and builds Bun. It does not apply SQL migrations.
+func Open(cfg Config) (*bun.DB, error) {
+	cfg = cfg.WithDefaults()
+	if cfg.Driver != DriverPostgres {
+		return nil, fmt.Errorf("unsupported db driver %q (use postgres)", cfg.Driver)
 	}
-	sqlDB.SetMaxOpenConns(1)
-
-	db := bun.NewDB(sqlDB, sqlitedialect.New())
-	if err := applyMigrations(db, DriverSQLite); err != nil {
-		_ = db.Close()
-		return nil, err
-	}
-	return db, nil
+	return openPostgres(cfg.DSN)
 }
 
 func openPostgres(dsn string) (*bun.DB, error) {
@@ -86,11 +72,10 @@ func openPostgres(dsn string) (*bun.DB, error) {
 	if err != nil {
 		return nil, fmt.Errorf("open postgres: %w", err)
 	}
-
-	db := bun.NewDB(sqlDB, pgdialect.New())
-	if err := applyMigrations(db, DriverPostgres); err != nil {
-		_ = db.Close()
-		return nil, err
+	if err := sqlDB.Ping(); err != nil {
+		_ = sqlDB.Close()
+		return nil, fmt.Errorf("ping postgres: %w", err)
 	}
-	return db, nil
+
+	return bun.NewDB(sqlDB, pgdialect.New()), nil
 }

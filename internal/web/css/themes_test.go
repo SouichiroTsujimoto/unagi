@@ -57,7 +57,6 @@ func TestParseThemesIgnoresCommentExamples(t *testing.T) {
 	}
 }
 
-
 func TestEmbeddedStylesThemes(t *testing.T) {
 	t.Parallel()
 

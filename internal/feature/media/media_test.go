@@ -13,20 +13,13 @@ import (
 )
 
 func TestUploadAndOpenPNG(t *testing.T) {
-	database, err := db.Open(db.Config{
-		Driver: db.DriverSQLite,
-		DSN:    filepath.Join(t.TempDir(), "media.db"),
-	})
-	if err != nil {
-		t.Fatal(err)
-	}
-	t.Cleanup(func() { _ = database.Close() })
+	database := db.OpenTest(t)
 
 	store, err := media.NewLocalStore(filepath.Join(t.TempDir(), "objects"))
 	if err != nil {
 		t.Fatal(err)
 	}
-	lib := media.New(database, store)
+	lib := media.New(database, store, "https://cdn.example/images")
 
 	var buf bytes.Buffer
 	img := image.NewRGBA(image.Rect(0, 0, 2, 2))
@@ -37,7 +30,7 @@ func TestUploadAndOpenPNG(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if result.URL == "" || result.Media.ContentType != "image/png" {
+	if result.URL != "https://cdn.example/images/"+result.Media.ObjectKey || result.Media.ContentType != "image/png" {
 		t.Fatalf("result=%+v", result)
 	}
 
@@ -60,16 +53,12 @@ func TestRejectOversize(t *testing.T) {
 	if err := media.ErrTooLarge; err == nil {
 		t.Fatal("sentinel")
 	}
-	database, err := db.Open(db.Config{Driver: db.DriverSQLite, DSN: filepath.Join(t.TempDir(), "m.db")})
-	if err != nil {
-		t.Fatal(err)
-	}
-	t.Cleanup(func() { _ = database.Close() })
+	database := db.OpenTest(t)
 	store, err := media.NewLocalStore(filepath.Join(t.TempDir(), "o"))
 	if err != nil {
 		t.Fatal(err)
 	}
-	lib := media.New(database, store)
+	lib := media.New(database, store, "https://cdn.example/images")
 	_, err = lib.Upload(context.Background(), "big.png", bytes.NewReader(nil), media.MaxUploadBytes+1)
 	if err != media.ErrTooLarge {
 		t.Fatalf("got %v", err)

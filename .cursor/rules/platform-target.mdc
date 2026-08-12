@@ -1,0 +1,29 @@
+---
+description: 本番プラットフォーム(Cloud Run + Supabase一式)
+alwaysApply: true
+---
+
+# プラットフォーム
+
+2026-08-13 以降の本番は次のとおり。インフラ設計とアプリ変更はこの先を正とする。
+
+## 採用
+
+- 計算: distroless コンテナを Cloud Run(東京、min-instances=0)
+- TLS: Cloud Run のカスタムドメイン(マネージド証明書)。CertMagic はない
+- DB: Supabase Postgres。ローカルは `supabase start`。sqlite はない
+- 画像: Supabase Storage、公開読み、同梱 CDN。Go の `/images` プロキシはない
+- 認証: Supabase Auth。admin(passkey + UUID allowlist)と読者Xログインは `internal/feature/auth`
+- Auth の実装: Go が JWT / GoTrue を検証する。island に supabase-js を入れない
+- CMSの業務(記事・スタンプ・コメントのルール、templ、islands)はGoに残す
+- schema: `supabase/migrations/`。適用は`supabase start`とGitHub integrationのDeploy to production。アプリは起動時にmigrateしない
+
+## 採用しない
+
+- Nanos / GCE unikernel、CertMagic、自前 WebAuthn サーバ、メディア用 GCS
+- Turso + R2 + Cloudflare CDN
+- Cloudflare 一式(Workers / D1 / Access)
+- Fastly、Cloud CDN
+- min-instances=1
+
+無料枠の7日pauseは許容する。

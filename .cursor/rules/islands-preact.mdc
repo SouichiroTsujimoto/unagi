@@ -11,7 +11,8 @@ alwaysApply: false
 ## 境界
 
 - 表示のみ: templで十分。Preactを無理に使わない。
-- 状態・フォーム操作・WebAuthn・autosave・preview・uploadなど: `internal/web/islands`のESMへ置く。
+- 状態・フォーム操作・passkey(Go経由のGoTrue中継)・autosave・preview・uploadなど: `internal/web/islands`のESMへ置く。
+- supabase-jsはislandに入れない。AuthはGoがJWT/GoTrueを扱う。
 - ページ内のインライン`<script>`やvanillaの`getElementById` + `addEventListener`で業務ロジックを増やさない。
 - CDNやNodeビルドチェーンに依存しない。vendorは`static/vendor`、再取得は`just vendor-islands`。
 
@@ -25,7 +26,7 @@ alwaysApply: false
 ```templ
 <is-land on:idle>
 	<template data-island>
-		<admin-setup></admin-setup>
+		<admin-login></admin-login>
 	</template>
 </is-land>
 ```
@@ -35,11 +36,11 @@ import { html } from "htm/preact";
 import { useState } from "preact/hooks";
 import register from "preact-custom-element";
 
-function AdminSetup() {
-	return html`<form class="flex max-w-md flex-col gap-5">...</form>`;
+function AdminLogin() {
+	return html`<button class="btn btn-primary" type="button">Passkeyでログイン</button>`;
 }
 
-register(AdminSetup, "admin-setup", []);
+register(AdminLogin, "admin-login", []);
 ```
 
 属性で初期値を渡すときは`register`の第3引数にobserved attributesを列挙する(`article-editor`参照)。
@@ -47,14 +48,14 @@ register(AdminSetup, "admin-setup", []);
 ## daisyUI 5
 
 - `form-control` / `label-text` / `*-bordered`は使わない(効かない)。
-- フォームは`fieldset.fieldset` + `label.label` + `input.input w-full`(既存の`account-panel` / `admin-auth`に合わせる)。
+- フォームは`fieldset.fieldset` + `label.label` + `input.input w-full`(既存の`admin-auth`に合わせる)。
 
 ## 禁止例
 
 ```js
 // ❌ BAD: ページ用vanillaハンドラを増やす
-document.getElementById("setup-btn")?.addEventListener("click", ...);
+document.getElementById("login-btn")?.addEventListener("click", ...);
 
 // ✅ GOOD: Preact islandに状態とsubmitを閉じる
-register(AdminSetup, "admin-setup", []);
+register(AdminLogin, "admin-login", []);
 ```

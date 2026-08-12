@@ -70,6 +70,15 @@ func Render(body string) (string, error) {
 	return string(policy.SanitizeBytes(buf.Bytes())), nil
 }
 
+// RewriteImageURLs replaces Markdown `/images/<key>` links with the public Storage base.
+func RewriteImageURLs(body, publicBase string) string {
+	publicBase = strings.TrimRight(strings.TrimSpace(publicBase), "/")
+	if publicBase == "" || body == "" {
+		return body
+	}
+	return strings.ReplaceAll(body, "/images/", publicBase+"/")
+}
+
 func expandZennBlocks(body string) (string, error) {
 	var err error
 	body = messageBlockRE.ReplaceAllStringFunc(body, func(block string) string {

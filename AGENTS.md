@@ -1,13 +1,13 @@
 # プロジェクト規約
 
-このリポジトリは**unagi**(個人用のミニマルな技術ブログ)である。[unigo-template](https://github.com/SouichiroTsujimoto/unigo-template)から作成し、同じワンバイナリ構成(Go、Echo、templ、is-land、Preact/htm、Tailwind CSS、daisyUI、SQLite、CertMagic、lipgloss、tint、huh)を引き継ぐ。
+このリポジトリは**unagi**(個人用のミニマルな技術ブログ)である。[unigo-template](https://github.com/SouichiroTsujimoto/unigo-template)から作成し、同じワンバイナリ構成(Go、Echo、templ、is-land、Preact/htm、Tailwind CSS、daisyUI、lipgloss、tint、huh)を引き継ぐ。DB / Auth / StorageはSupabase、本番はCloud Run(distroless)とする。
 
-- ワンバイナリ: 別ランタイム不要
-- デプロイ: systemd、distrolessコンテナ、Nanosユニカーネルなど(本番のNanos手順は`deploy/nanos/`)
-- 開発者体験: `just run`でホットリロード・TUI対応。`cmd/dev`は`.env`を読む(`bin/server`は読まない)
-- Islands Architecture: templ + `<is-land>` + Preact/htm (ビルド時・実行時 Node.js不要)
-- 公開記事の正本はSQLite。埋め込み`articles/`は空DB時のseed用
-- 管理画面(`/admin`)は単一管理者のpasskey認証。秘密は環境変数(`.unigo.toml`に平文で置かない)
+- ワンバイナリ: 別ランタイム不要(Cloud Runはdistroless静的バイナリ)
+- デプロイ: Cloud Run(東京、min-instances=0)。mainへのpushでCIがテスト後にデプロイし、Supabase GitHub integration(Deploy to production)が`supabase/migrations/`を適用する。手順は`deploy/cloudrun/`
+- 開発者体験: `supabase start` + `just run`でホットリロード・TUI対応。`cmd/dev`は`.env`を読む(`bin/server`は読まない)
+- Islands Architecture: templ + `<is-land>` + Preact/htm (ビルド時・実行時 Node.js不要)。supabase-jsはislandに入れない
+- 公開記事の正本はPostgres。埋め込み`articles/`は空DB時のseed用
+- 管理画面(`/admin`)はSupabase Auth(passkey) + `UNIGO_ADMIN_USER_IDS`のallowlist。秘密は環境変数(`.unigo.toml`に平文で置かない)
 
 小さなpackage境界を保つ。
 
@@ -33,18 +33,18 @@
 - `init()`やグローバルregistryでrouteや依存関係を登録しない。
 - Echo、templ、islandのマウントHTMLへの依存は`internal/web`に閉じ込める。
 - 業務操作は`internal/feature/<name>`に置き、Web handlerからSQLを直接実行しない。
-- DB接続(driver/DSN)、Bunの構築、`bun/migrate`の実行順序は`internal/db`が所有する。
-- 機能packageのデータアクセスにはBunを使い、schema変更は`internal/db/migrations/<driver>`の連番SQL migrationで管理する。
-- 操作の入口は`article.Articles`や`adminauth.Auth`のように機能を表す名前にし、汎用的な`Service`や`Context`を避ける。
-- HTTP、HTTPS、CertMagicの起動処理は`internal/httpserver`が所有する。
+- 機能packageのデータアクセスにはBunを使う。
+- DB接続(driver/DSN)とBunの構築は`internal/db`が所有する。schema変更は`supabase/migrations/`のtimestamp付きSQLで管理し、適用はSupabase CLIとGitHub integrationに任せる。アプリ起動時には流さない。
+- 操作の入口は`article.Articles`や`auth.Auth`のように機能を表す名前にし、汎用的な`Service`や`Context`を避ける。
+- HTTPサーバの起動処理(Cloud Run向けHTTP + SIGTERM)は`internal/httpserver`が所有する。
 - 起動バナー、tint付き端末ログは`internal/terminal`が所有する。
 - 開発用ランチャー／TUI(Bubble Tea)は`cmd/dev/internal/tui`が所有する。
-- プロジェクト設定(`.unigo.toml`)は`internal/config`が所有する。secretやbootstrap tokenは環境変数 / `.env`。
+- プロジェクト設定(`.unigo.toml`)は`internal/config`が所有する。secretは環境変数 / `.env`。
 - 埋め込み静的資産は`static`が所有する(CSS、vendored ESM)。islandのソースは`internal/web/islands`が所有し、`/static/islands`として配信する。
 - カスタムバナーロゴのASCII生成は`cmd/logo` / `internal/logogen`が所有する(`bin/server`にはascii-image-converterをリンクしない)。
 - `common`、`utils`、`service`、`repository`、`cli`を慣習だけで追加しない。
 - interfaceは必要とするconsumer側に最小の形で定義する。
-- migrationは`*.tx.up.sql`と`*.tx.down.sql`を対にし、適用後に変更せず新しい連番ファイルを追加する。
+- schemaのmigrationは`supabase/migrations/`へtimestamp付きSQLを追加する。適用後のファイルは変更せず、新しいファイルを足す。
 - `*_templ.go`は生成物なので直接編集しない。
 - importはファイル先頭に置き、関数内importを使わない。
 
@@ -59,7 +59,7 @@
 ## 機能追加
 
 1. `internal/feature/<name>`へ業務APIを追加する。
-2. `internal/db/migrations/<driver>`へschema変更を追加する。
+2. `supabase/migrations/`へschema変更を追加する。
 3. `internal/web/<area>`へhandlerとtemplを追加する(islandが必要なら`internal/web/islands`も)。
 4. `internal/app`で依存関係を構築する。
 5. `internal/web/router.go`へrouteを登録する。

@@ -247,4 +247,3 @@ func displayOrDash(value string) string {
 	}
 	return value
 }
-

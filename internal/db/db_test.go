@@ -1,23 +1,11 @@
 package db
 
 import (
-	"path/filepath"
 	"testing"
 )
 
-func TestOpenSQLiteAppliesMigrations(t *testing.T) {
-	t.Parallel()
-
-	path := filepath.Join(t.TempDir(), "test.db")
-	database, err := Open(Config{Driver: DriverSQLite, DSN: path})
-	if err != nil {
-		t.Fatalf("Open sqlite: %v", err)
-	}
-	t.Cleanup(func() {
-		if err := database.Close(); err != nil {
-			t.Errorf("close: %v", err)
-		}
-	})
+func TestOpenPostgresHasSchema(t *testing.T) {
+	database := OpenTest(t)
 
 	var n int
 	if err := database.NewSelect().
@@ -44,10 +32,13 @@ func TestConfigWithDefaults(t *testing.T) {
 	t.Parallel()
 
 	got := Config{}.WithDefaults()
-	if got.Driver != DriverSQLite || got.DSN != "app.db" {
-		t.Fatalf("defaults = %+v", got)
+	if got.Driver != DriverPostgres {
+		t.Fatalf("driver = %q", got.Driver)
 	}
-	if got.Label() != "app.db" {
-		t.Fatalf("Label = %q", got.Label())
+	if got.DSN == "" {
+		t.Fatal("expected default DSN")
+	}
+	if got.Label() == "" {
+		t.Fatal("expected Label")
 	}
 }

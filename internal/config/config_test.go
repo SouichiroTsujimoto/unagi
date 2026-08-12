@@ -3,6 +3,7 @@ package config
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -69,8 +70,8 @@ func TestLoadPathPartialDevKeepsBannerDefault(t *testing.T) {
 	if !got.TUIEnabled() {
 		t.Fatal("expected tui default true")
 	}
-	if got.DB.Driver != "sqlite" || got.DB.DSN != "app.db" {
-		t.Fatalf("expected default db, got %+v", got.DB)
+	if got.DB.Driver != "postgres" || !strings.Contains(got.DB.DSN, "54322") {
+		t.Fatalf("expected default postgres db, got %+v", got.DB)
 	}
 	if len(got.Banner.Fields) != len(Default().Banner.Fields) {
 		t.Fatalf("expected default banner fields, got %v", got.Banner.Fields)

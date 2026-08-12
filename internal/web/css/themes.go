@@ -17,10 +17,10 @@ var (
 )
 
 var (
-	themesLineRE = regexp.MustCompile(`(?m)^\s*themes:\s*([^;]+);`)
-	themeTokenRE = regexp.MustCompile(`([A-Za-z0-9_-]+)((?:\s+--[A-Za-z0-9_-]+)*)`)
-	nameRE       = regexp.MustCompile(`(?m)^\s*name:\s*"([^"]+)"\s*;`)
-	defaultRE    = regexp.MustCompile(`(?m)^\s*default:\s*true\s*;`)
+	themesLineRE  = regexp.MustCompile(`(?m)^\s*themes:\s*([^;]+);`)
+	themeTokenRE  = regexp.MustCompile(`([A-Za-z0-9_-]+)((?:\s+--[A-Za-z0-9_-]+)*)`)
+	nameRE        = regexp.MustCompile(`(?m)^\s*name:\s*"([^"]+)"\s*;`)
+	defaultRE     = regexp.MustCompile(`(?m)^\s*default:\s*true\s*;`)
 	prefersDarkRE = regexp.MustCompile(`(?m)^\s*prefersdark:\s*true\s*;`)
 )
 

@@ -3,7 +3,6 @@ import { useMemo, useState } from "preact/hooks";
 import register from "preact-custom-element";
 
 function ArticleEditor(props) {
-  const csrf = props.csrf || "";
   const isNew = props.isNew === "true";
   const articleId = props.articleId || "";
   const [slug, setSlug] = useState(props.slug || "");
@@ -40,7 +39,6 @@ function ArticleEditor(props) {
       method,
       headers: {
         "Content-Type": "application/json",
-        "X-CSRF-Token": csrf,
         Accept: "application/json",
       },
       body: body ? JSON.stringify(body) : undefined,
@@ -132,7 +130,6 @@ function ArticleEditor(props) {
     try {
       const res = await fetch("/api/admin/media", {
         method: "POST",
-        headers: { "X-CSRF-Token": csrf },
         body: form,
       });
       const data = await res.json();
@@ -222,7 +219,6 @@ function ArticleEditor(props) {
 }
 
 register(ArticleEditor, "article-editor", [
-  "csrf",
   "article-id",
   "is-new",
   "slug",

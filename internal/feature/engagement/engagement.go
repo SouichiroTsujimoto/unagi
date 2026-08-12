@@ -1,7 +1,6 @@
 package engagement
 
 import (
-	"crypto/sha256"
 	"errors"
 	"fmt"
 	"strings"
@@ -27,10 +26,10 @@ const (
 	CommentStatusVisible = "visible"
 	CommentStatusHidden  = "hidden"
 
-	MaxStickersPerArticle        = 200
-	MaxStickersPerVisitorArticle = 10
-	MaxCommentLength             = 1000
-	MaxCommentsPerArticle        = 500
+	MaxStickersPerArticle     = 200
+	MaxCommentLength          = 1000
+	MaxCommentsPerArticle     = 500
+	MaxCommentsPerUserArticle = 20
 
 	LoginPath = "/auth/x/login"
 )
@@ -80,6 +79,7 @@ type Comment struct {
 	DisplayName string    `json:"displayName"`
 	AvatarURL   string    `json:"avatarUrl"`
 	CreatedAt   time.Time `json:"createdAt"`
+	Mine        bool      `json:"mine,omitempty"`
 }
 
 // Viewer is the signed-in X account shown in engagement UI.
@@ -87,6 +87,15 @@ type Viewer struct {
 	Username    string `json:"username"`
 	DisplayName string `json:"displayName"`
 	AvatarURL   string `json:"avatarUrl"`
+	XUserID     string `json:"-"`
+}
+
+// Author is a signed-in X account writing stickers or comments.
+type Author struct {
+	XUserID     string
+	Username    string
+	DisplayName string
+	AvatarURL   string
 }
 
 // Snapshot is the public engagement payload for an article.
@@ -97,14 +106,25 @@ type Snapshot struct {
 	LoginPath     string    `json:"loginPath"`
 	Authenticated bool      `json:"authenticated"`
 	Viewer        *Viewer   `json:"viewer,omitempty"`
+	LogoutPath    string    `json:"logoutPath,omitempty"`
+}
+
+// AdminComment is a moderation row including hidden comments.
+type AdminComment struct {
+	ID          int64     `json:"id"`
+	Body        string    `json:"body"`
+	Status      string    `json:"status"`
+	Username    string    `json:"username"`
+	DisplayName string    `json:"displayName"`
+	AvatarURL   string    `json:"avatarUrl"`
+	CreatedAt   time.Time `json:"createdAt"`
 }
 
 // AddEmojiInput places an anonymous emoji sticker.
 type AddEmojiInput struct {
-	Emoji       string
-	X           float64
-	Y           float64
-	VisitorHash []byte
+	Emoji string
+	X     float64
+	Y     float64
 }
 
 type dbSticker struct {
@@ -136,12 +156,6 @@ type dbComment struct {
 	AvatarURL   string    `bun:"avatar_url,notnull"`
 	CreatedAt   time.Time `bun:",notnull"`
 	UpdatedAt   time.Time `bun:",notnull"`
-}
-
-// HashVisitor returns a stable hash for a visitor cookie value.
-func HashVisitor(raw string) []byte {
-	sum := sha256.Sum256([]byte(raw))
-	return sum[:]
 }
 
 func normalizeEmoji(emoji string) (string, error) {

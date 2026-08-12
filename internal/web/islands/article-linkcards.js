@@ -7,7 +7,32 @@ function markThumbLoaded(img) {
   if (skel) skel.remove();
 }
 
+function markArticleImageFailed(img) {
+  if (!(img instanceof HTMLImageElement) || img.dataset.failed === "1") return;
+  img.dataset.failed = "1";
+  img.hidden = true;
+
+  const message = document.createElement("span");
+  message.className = "article-image-error";
+  message.setAttribute("role", "status");
+  message.textContent = img.alt
+    ? `画像「${img.alt}」を表示できませんでした。`
+    : "画像を表示できませんでした。";
+  img.insertAdjacentElement("afterend", message);
+}
+
 function enhanceMedia(root = document) {
+  root.querySelectorAll(".article-prose img").forEach((img) => {
+    if (img.closest(".article-linkcard, .article-embed")) return;
+    if (img.dataset.enhanced === "1") return;
+    img.dataset.enhanced = "1";
+    if (img.complete) {
+      if (img.naturalWidth === 0) markArticleImageFailed(img);
+      return;
+    }
+    img.addEventListener("error", () => markArticleImageFailed(img), { once: true });
+  });
+
   root.querySelectorAll(".article-linkcard-thumb-img").forEach((img) => {
     if (img.dataset.enhanced === "1") return;
     img.dataset.enhanced = "1";

@@ -7,11 +7,10 @@ import (
 	"os"
 	"strings"
 
-	"cloud.google.com/go/storage"
 	sitecontent "github.com/SouichiroTsujimoto/unagi"
 	"github.com/SouichiroTsujimoto/unagi/internal/db"
-	"github.com/SouichiroTsujimoto/unagi/internal/feature/adminauth"
 	"github.com/SouichiroTsujimoto/unagi/internal/feature/article"
+	featureauth "github.com/SouichiroTsujimoto/unagi/internal/feature/auth"
 	"github.com/SouichiroTsujimoto/unagi/internal/feature/engagement"
 	"github.com/SouichiroTsujimoto/unagi/internal/feature/linkcard"
 	"github.com/SouichiroTsujimoto/unagi/internal/feature/media"
@@ -21,6 +20,7 @@ import (
 	"github.com/SouichiroTsujimoto/unagi/internal/web/about"
 	"github.com/SouichiroTsujimoto/unagi/internal/web/admin"
 	webarticle "github.com/SouichiroTsujimoto/unagi/internal/web/article"
+	webauth "github.com/SouichiroTsujimoto/unagi/internal/web/auth"
 	webengagement "github.com/SouichiroTsujimoto/unagi/internal/web/engagement"
 	"github.com/SouichiroTsujimoto/unagi/internal/web/feed"
 	"github.com/SouichiroTsujimoto/unagi/internal/web/home"
@@ -33,19 +33,18 @@ import (
 )
 
 type Config struct {
-	Address          string
-	DB               db.Config
-	Domains          []string
-	ACMEEmail        string
-	CertMagicStorage string
-	Version          string
-	Banner           string
-	Site             layout.Site
-	Auth             adminauth.Config
-	MediaBackend     string // local | gcs
-	MediaLocalDir    string
-	GCSBucket        string
-	GCSPrefix        string
+	Address            string
+	DB                 db.Config
+	Version            string
+	Banner             string
+	Site               layout.Site
+	Auth               featureauth.Config
+	MediaBackend       string // local | supabase
+	MediaLocalDir      string
+	MediaPublicBase    string
+	MediaBucket        string
+	SupabaseURL        string
+	SupabaseServiceKey string
 }
 
 func Run(config Config) error {
@@ -59,6 +58,7 @@ func Run(config Config) error {
 	defer database.Close()
 
 	articles := article.New(database)
+	articles.SetMediaPublicBase(config.MediaPublicBase)
 	cards := linkcard.New(database)
 	articles.SetEmbeds(cards)
 	eng := engagement.New(database, articles)
@@ -72,18 +72,15 @@ func Run(config Config) error {
 		log.Info("seeded articles from embed", "count", n)
 	}
 
-	objectStore, closer, err := openObjectStore(config)
+	objectStore, err := openObjectStore(config)
 	if err != nil {
 		return err
 	}
-	if closer != nil {
-		defer closer()
-	}
-	mediaLib := media.New(database, objectStore)
+	mediaLib := media.New(database, objectStore, config.MediaPublicBase)
 
-	auth, err := adminauth.New(database, config.Auth)
+	auth, err := featureauth.New(config.Auth)
 	if err != nil {
-		return fmt.Errorf("admin auth: %w", err)
+		return fmt.Errorf("auth: %w", err)
 	}
 
 	site := config.Site
@@ -102,25 +99,23 @@ func Run(config Config) error {
 		Sitemap:    sitemap.New(articles, site, log),
 		Admin:      admin.New(auth, articles, eng, site, log),
 		Media:      webmedia.New(mediaLib, log),
-		Engagement: webengagement.New(eng, site, log),
+		Engagement: webengagement.New(eng, auth, site, log),
 		LinkCard:   weblinkcard.New(cards, log),
+		Auth:       webauth.New(auth, site, log),
 	}, static.FS(), islands.FS())
 
 	return httpserver.Run(handler, httpserver.Config{
-		Address:          config.Address,
-		Domains:          config.Domains,
-		ACMEEmail:        config.ACMEEmail,
-		CertMagicStorage: config.CertMagicStorage,
-		DBPath:           config.DB.WithDefaults().Label(),
-		Version:          config.Version,
-		Banner:           config.Banner,
+		Address: config.Address,
+		DBPath:  config.DB.WithDefaults().Label(),
+		Version: config.Version,
+		Banner:  config.Banner,
 	}, log)
 }
 
-func openObjectStore(config Config) (media.ObjectStore, func(), error) {
+func openObjectStore(config Config) (media.ObjectStore, error) {
 	backend := strings.ToLower(strings.TrimSpace(config.MediaBackend))
 	if backend == "" {
-		backend = "local"
+		backend = "supabase"
 	}
 	switch backend {
 	case "local":
@@ -128,23 +123,23 @@ func openObjectStore(config Config) (media.ObjectStore, func(), error) {
 		if dir == "" {
 			dir = "data/media"
 		}
-		store, err := media.NewLocalStore(dir)
-		return store, nil, err
-	case "gcs":
-		if strings.TrimSpace(config.GCSBucket) == "" {
-			return nil, nil, fmt.Errorf("gcs bucket is required")
+		return media.NewLocalStore(dir)
+	case "supabase":
+		url := config.SupabaseURL
+		if url == "" {
+			url = config.Auth.SupabaseURL
 		}
-		client, err := storage.NewClient(context.Background())
-		if err != nil {
-			return nil, nil, fmt.Errorf("gcs client: %w", err)
+		bucket := config.MediaBucket
+		if bucket == "" {
+			bucket = "images"
 		}
-		return media.NewGCSStore(client, config.GCSBucket, config.GCSPrefix), func() { _ = client.Close() }, nil
+		return media.NewSupabaseStore(url, bucket, config.SupabaseServiceKey, nil)
 	default:
-		return nil, nil, fmt.Errorf("unsupported media backend %q", backend)
+		return nil, fmt.Errorf("unsupported media backend %q", backend)
 	}
 }
 
-// Ensure data dir exists for local defaults.
+// EnsureDataDirs creates local directories used by the local media backend.
 func EnsureDataDirs(paths ...string) error {
 	for _, p := range paths {
 		if strings.TrimSpace(p) == "" {

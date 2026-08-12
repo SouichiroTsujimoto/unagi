@@ -86,8 +86,8 @@ func TestGlyphShareShape(t *testing.T) {
 	if len(g.On) != 25 {
 		t.Fatalf("len=%d", len(g.On))
 	}
-	// Tip of up-arrow and tray corners should be on.
-	if !g.At(2, 0) || !g.At(0, 4) || !g.At(4, 4) {
+	// Arrow tip / stem and tray bottom-left should be on for the share affordance.
+	if !g.At(2, 0) || !g.At(0, 4) || !g.At(4, 3) {
 		t.Fatalf("share glyph missing expected dots: %v", g.On)
 	}
 }

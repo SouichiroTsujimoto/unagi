@@ -13,15 +13,7 @@ import (
 
 func openTestArticles(t *testing.T) *Articles {
 	t.Helper()
-	database, err := db.Open(db.Config{
-		Driver: db.DriverSQLite,
-		DSN:    "file:" + strings.ReplaceAll(t.Name(), "/", "_") + "?mode=memory&cache=shared",
-	})
-	if err != nil {
-		t.Fatal(err)
-	}
-	t.Cleanup(func() { _ = database.Close() })
-	return New(database)
+	return New(db.OpenTest(t))
 }
 
 func TestParseAndPublicVisibility(t *testing.T) {

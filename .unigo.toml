@@ -6,12 +6,9 @@ logo = true
 tui = true
 
 [db]
-# driver: sqlite | postgres
-driver = "sqlite"
-dsn = "app.db"
-# Example Cloud SQL / Postgres:
-# driver = "postgres"
-# dsn = "postgres://user:pass@localhost:5432/unigo?sslmode=require"
+# Local Supabase Postgres (`supabase start`). Override with UNIGO_DB_DSN.
+driver = "postgres"
+dsn = "postgresql://postgres:postgres@127.0.0.1:54322/postgres"
 
 [site]
 name = "unagi"

@@ -33,7 +33,7 @@ type Site struct {
 
 // DB holds database connection defaults.
 type DB struct {
-	Driver string `toml:"driver"` // sqlite | postgres
+	Driver string `toml:"driver"` // postgres
 	DSN    string `toml:"dsn"`
 }
 
@@ -62,8 +62,8 @@ func Default() File {
 			TUI:  &tui,
 		},
 		DB: DB{
-			Driver: "sqlite",
-			DSN:    "app.db",
+			Driver: "postgres",
+			DSN:    "postgresql://postgres:postgres@127.0.0.1:54322/postgres",
 		},
 		Banner: Banner{
 			Fields: []string{

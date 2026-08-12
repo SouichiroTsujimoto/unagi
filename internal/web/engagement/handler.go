@@ -1,33 +1,33 @@
 package engagement
 
 import (
-	"crypto/rand"
-	"encoding/hex"
 	"errors"
 	"log/slog"
 	"net/http"
 	"net/url"
+	"strconv"
 	"strings"
 	"time"
 
 	"github.com/labstack/echo/v4"
 
+	featureauth "github.com/SouichiroTsujimoto/unagi/internal/feature/auth"
 	"github.com/SouichiroTsujimoto/unagi/internal/feature/engagement"
 	"github.com/SouichiroTsujimoto/unagi/internal/web/layout"
 )
 
-const visitorCookie = "unagi_visitor"
-
 type Handler struct {
 	engagement *engagement.Engagement
+	auth       *featureauth.Auth
 	site       layout.Site
 	log        *slog.Logger
 	now        func() time.Time
 }
 
-func New(eng *engagement.Engagement, site layout.Site, log *slog.Logger) *Handler {
+func New(eng *engagement.Engagement, a *featureauth.Auth, site layout.Site, log *slog.Logger) *Handler {
 	return &Handler{
 		engagement: eng,
+		auth:       a,
 		site:       site,
 		log:        log,
 		now:        time.Now,
@@ -35,7 +35,8 @@ func New(eng *engagement.Engagement, site layout.Site, log *slog.Logger) *Handle
 }
 
 func (h *Handler) Get(c echo.Context) error {
-	snap, err := h.engagement.GetSnapshot(c.Request().Context(), c.Param("slug"), h.now())
+	viewer := h.viewerFromRequest(c)
+	snap, err := h.engagement.GetSnapshot(c.Request().Context(), c.Param("slug"), h.now(), viewer)
 	if errors.Is(err, engagement.ErrNotFound) {
 		return echo.NewHTTPError(http.StatusNotFound, "article not found")
 	}
@@ -60,26 +61,33 @@ func (h *Handler) AddEmojiSticker(c echo.Context) error {
 	if err := c.Bind(&body); err != nil {
 		return echo.NewHTTPError(http.StatusBadRequest, "invalid json")
 	}
-	visitor, err := h.ensureVisitor(c)
-	if err != nil {
-		h.log.Error("ensure visitor", "err", err)
-		return echo.NewHTTPError(http.StatusInternalServerError, "internal error")
-	}
 	sticker, err := h.engagement.AddEmojiSticker(c.Request().Context(), c.Param("slug"), h.now(), engagement.AddEmojiInput{
-		Emoji:       body.Emoji,
-		X:           body.X,
-		Y:           body.Y,
-		VisitorHash: engagement.HashVisitor(visitor),
+		Emoji: body.Emoji,
+		X:     body.X,
+		Y:     body.Y,
 	})
-	return h.mapWriteError(c, err, sticker)
+	return h.mapWriteError(c, err, sticker, nil)
+}
+
+type avatarStickerBody struct {
+	X float64 `json:"x"`
+	Y float64 `json:"y"`
 }
 
 func (h *Handler) AddAvatarSticker(c echo.Context) error {
 	if err := h.requireAllowedOrigin(c); err != nil {
 		return err
 	}
-	_, err := h.engagement.AddAvatarSticker(c.Request().Context(), c.Param("slug"), h.now())
-	return h.mapLoginError(c, err)
+	author, err := h.requireAuthor(c)
+	if err != nil {
+		return err
+	}
+	var body avatarStickerBody
+	if err := c.Bind(&body); err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, "invalid json")
+	}
+	sticker, err := h.engagement.AddAvatarSticker(c.Request().Context(), c.Param("slug"), h.now(), author, body.X, body.Y)
+	return h.mapWriteError(c, err, sticker, nil)
 }
 
 type commentBody struct {
@@ -90,16 +98,99 @@ func (h *Handler) AddComment(c echo.Context) error {
 	if err := h.requireAllowedOrigin(c); err != nil {
 		return err
 	}
+	author, err := h.requireAuthor(c)
+	if err != nil {
+		return err
+	}
 	var body commentBody
 	if err := c.Bind(&body); err != nil {
 		return echo.NewHTTPError(http.StatusBadRequest, "invalid json")
 	}
-	_, err := h.engagement.AddComment(c.Request().Context(), c.Param("slug"), h.now(), body.Body)
-	return h.mapLoginError(c, err)
+	comment, err := h.engagement.AddComment(c.Request().Context(), c.Param("slug"), h.now(), author, body.Body)
+	return h.mapWriteError(c, err, engagement.Sticker{}, &comment)
 }
 
-func (h *Handler) mapWriteError(c echo.Context, err error, sticker engagement.Sticker) error {
+func (h *Handler) DeleteOwnComment(c echo.Context) error {
+	if err := h.requireAllowedOrigin(c); err != nil {
+		return err
+	}
+	author, err := h.requireAuthor(c)
+	if err != nil {
+		return err
+	}
+	id, err := strconv.ParseInt(c.Param("id"), 10, 64)
+	if err != nil || id <= 0 {
+		return echo.NewHTTPError(http.StatusBadRequest, "invalid comment id")
+	}
+	err = h.engagement.DeleteOwnComment(c.Request().Context(), c.Param("slug"), h.now(), author, id)
 	switch {
+	case err == nil:
+		return c.NoContent(http.StatusNoContent)
+	case errors.Is(err, engagement.ErrNotFound):
+		return echo.NewHTTPError(http.StatusNotFound, "comment not found")
+	case errors.Is(err, engagement.ErrInvalidInput):
+		return echo.NewHTTPError(http.StatusBadRequest, err.Error())
+	case errors.Is(err, engagement.ErrLoginRequired):
+		return h.loginRequired(c)
+	default:
+		h.log.Error("delete own comment", "err", err, "slug", c.Param("slug"), "comment_id", id)
+		return echo.NewHTTPError(http.StatusInternalServerError, "internal error")
+	}
+}
+
+func (h *Handler) requireAuthor(c echo.Context) (engagement.Author, error) {
+	user, err := h.userFromRequest(c)
+	if errors.Is(err, featureauth.ErrUnauthorized) {
+		return engagement.Author{}, h.loginRequired(c)
+	}
+	if err != nil {
+		h.log.Error("lookup auth session", "err", err)
+		return engagement.Author{}, echo.NewHTTPError(http.StatusInternalServerError, "internal error")
+	}
+	return engagement.Author{
+		XUserID:     user.ID,
+		Username:    user.Username,
+		DisplayName: user.DisplayName,
+		AvatarURL:   user.AvatarURL,
+	}, nil
+}
+
+func (h *Handler) viewerFromRequest(c echo.Context) *engagement.Viewer {
+	user, err := h.userFromRequest(c)
+	if err != nil {
+		return nil
+	}
+	return &engagement.Viewer{
+		Username:    user.Username,
+		DisplayName: user.DisplayName,
+		AvatarURL:   user.AvatarURL,
+		XUserID:     user.ID,
+	}
+}
+
+func (h *Handler) userFromRequest(c echo.Context) (featureauth.User, error) {
+	if h.auth == nil {
+		return featureauth.User{}, featureauth.ErrUnauthorized
+	}
+	cookie, err := c.Cookie(featureauth.CookieName)
+	if err != nil || cookie.Value == "" {
+		return featureauth.User{}, featureauth.ErrUnauthorized
+	}
+	return h.auth.ParseAccessToken(cookie.Value)
+}
+
+func (h *Handler) loginRequired(c echo.Context) error {
+	return c.JSON(http.StatusUnauthorized, map[string]any{
+		"error":     "login_required",
+		"message":   "Xアカウントでログインしてください",
+		"loginPath": engagement.LoginPath,
+	})
+}
+
+func (h *Handler) mapWriteError(c echo.Context, err error, sticker engagement.Sticker, comment *engagement.Comment) error {
+	switch {
+	case err == nil && comment != nil:
+		return c.JSON(http.StatusCreated, *comment)
 	case err == nil:
 		return c.JSON(http.StatusCreated, sticker)
 	case errors.Is(err, engagement.ErrNotFound):
@@ -108,26 +199,10 @@ func (h *Handler) mapWriteError(c echo.Context, err error, sticker engagement.St
 		return echo.NewHTTPError(http.StatusBadRequest, err.Error())
 	case errors.Is(err, engagement.ErrLimitExceeded):
 		return echo.NewHTTPError(http.StatusTooManyRequests, err.Error())
+	case errors.Is(err, engagement.ErrLoginRequired):
+		return h.loginRequired(c)
 	default:
 		h.log.Error("write engagement", "err", err, "slug", c.Param("slug"))
-		return echo.NewHTTPError(http.StatusInternalServerError, "internal error")
-	}
-}
-
-func (h *Handler) mapLoginError(c echo.Context, err error) error {
-	switch {
-	case errors.Is(err, engagement.ErrNotFound):
-		return echo.NewHTTPError(http.StatusNotFound, "article not found")
-	case errors.Is(err, engagement.ErrInvalidInput):
-		return echo.NewHTTPError(http.StatusBadRequest, err.Error())
-	case errors.Is(err, engagement.ErrLoginRequired):
-		return c.JSON(http.StatusUnauthorized, map[string]any{
-			"error":     "login_required",
-			"message":   "Xアカウントでログインしてください",
-			"loginPath": engagement.LoginPath,
-		})
-	default:
-		h.log.Error("login-gated engagement", "err", err, "slug", c.Param("slug"))
 		return echo.NewHTTPError(http.StatusInternalServerError, "internal error")
 	}
 }
@@ -135,6 +210,12 @@ func (h *Handler) mapLoginError(c echo.Context, err error) error {
 func (h *Handler) requireAllowedOrigin(c echo.Context) error {
 	origin := c.Request().Header.Get("Origin")
 	if origin == "" {
+		return nil
+	}
+	if h.auth != nil {
+		if !h.auth.ValidOrigin(origin) {
+			return echo.NewHTTPError(http.StatusForbidden, "invalid origin")
+		}
 		return nil
 	}
 	if !h.validOrigin(origin) {
@@ -189,34 +270,4 @@ func sameHostPort(gotHost, gotPort, wantHost, wantPort, scheme string) bool {
 func isLoopbackHost(host string) bool {
 	host = strings.ToLower(host)
 	return host == "localhost" || host == "127.0.0.1" || host == "::1"
-}
-
-func (h *Handler) ensureVisitor(c echo.Context) (string, error) {
-	if cookie, err := c.Cookie(visitorCookie); err == nil && isVisitorToken(cookie.Value) {
-		return cookie.Value, nil
-	}
-	raw := make([]byte, 32)
-	if _, err := rand.Read(raw); err != nil {
-		return "", err
-	}
-	token := hex.EncodeToString(raw)
-	secure := strings.HasPrefix(strings.ToLower(h.site.BaseURL), "https://")
-	c.SetCookie(&http.Cookie{
-		Name:     visitorCookie,
-		Value:    token,
-		Path:     "/",
-		HttpOnly: true,
-		SameSite: http.SameSiteLaxMode,
-		Secure:   secure,
-		MaxAge:   60 * 60 * 24 * 400,
-	})
-	return token, nil
-}
-
-func isVisitorToken(v string) bool {
-	if len(v) != 64 {
-		return false
-	}
-	_, err := hex.DecodeString(v)
-	return err == nil
 }

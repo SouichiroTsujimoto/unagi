@@ -1,16 +1,18 @@
 # unagi
 
-個人用のミニマルな技術ブログ。Goワンバイナリ(Echo / templ / is-land / Preact / SQLite / CertMagic)。
+個人用のミニマルな技術ブログ。Goワンバイナリ(Echo / templ / is-land / Preact) + Supabase(Postgres / Auth / Storage) + Cloud Run(distroless)。
 
 [unigo-template](https://github.com/SouichiroTsujimoto/unigo-template)から作成しています。
 
-設計の不変条件は[AGENTS.md](AGENTS.md)。Nanos本番は[deploy/nanos/README.md](deploy/nanos/README.md)。
+設計の不変条件は[AGENTS.md](AGENTS.md)。Cloud Run手順は[deploy/cloudrun/README.md](deploy/cloudrun/README.md)。
 
 ## 開発
 
 ```sh
 cp .env.example .env
-# 初回 /admin/setup 用に UNIGO_BOOTSTRAP_TOKEN_HASH を設定
+supabase start
+# `supabase status -o env` のキーを .env に反映
+# Studioで管理者ユーザを作り、UUIDを UNIGO_ADMIN_USER_IDS へ
 just run
 ```
 
@@ -38,9 +40,11 @@ jj git push
 
 ## 構成の要点
 
-- 公開記事の正本はSQLite。埋め込み`articles/`は空DB時のseed用
-- 管理: `/admin`(passkey)。画像はlocalまたはGCS、配信は`/images/*`
-- WebAuthn / sessionなどの秘密は環境変数。RP IDとoriginsは未設定時`[site].base_url`から決まる
+- 公開記事の正本はSupabase Postgres。埋め込み`articles/`は空DB時のseed用
+- schemaは`supabase/migrations/`。mainへのpushでGitHub integrationが適用する。アプリは起動時にmigrateしない
+- 管理: `/admin`(Supabase Auth passkey + `UNIGO_ADMIN_USER_IDS`)。読者ログインはX(Twitter) provider
+- 画像はSupabase Storage公開バケット。Markdownの`/images/...`は公開ベースURLへ書き換え。アプリは`GET /images`を持たない
+- TLSはCloud Runのマネージド証明書。アプリはHTTPのみ(`PORT`)
 
 ## License
 

@@ -4,9 +4,9 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/SouichiroTsujimoto/unagi/internal/db"
 	"github.com/charmbracelet/bubbles/viewport"
 	"github.com/charmbracelet/lipgloss"
-	"github.com/SouichiroTsujimoto/unagi/internal/db"
 )
 
 func TestShouldUsePaneSwitch(t *testing.T) {
@@ -75,7 +75,7 @@ func TestPaneSwitchViewRendersTabs(t *testing.T) {
 		BannerStyle: "compact",
 		Version:     "dev",
 		Address:     ":8080",
-		DB:          db.Config{Driver: db.DriverSQLite, DSN: "app.db"},
+		DB:          db.Config{Driver: db.DriverPostgres, DSN: "postgresql://postgres:***@127.0.0.1:54322/postgres"},
 	})
 	// Narrower than banner + air side panel.
 	m.width = lipgloss.Width(m.banner) + minSidePanelWidth
