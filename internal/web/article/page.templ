@@ -12,7 +12,7 @@ templ ShowPage(meta layout.PageMeta, post article.Article) {
 			<article class="article-body space-y-8">
 				<header class="space-y-6 border-b border-base-content/10 pb-8">
 					<p class="text-base-content/45 text-sm">
-						<a href="/" class="hover:text-base-content hover:underline">記事</a>
+						<a href="/" class="hover:text-base-content hover:underline">articles</a>
 						<span aria-hidden="true"> / </span>
 						<span>{ post.Title }</span>
 					</p>
@@ -25,18 +25,21 @@ templ ShowPage(meta layout.PageMeta, post article.Article) {
 							{ post.Title }
 						</h1>
 						<article-share
+							hydrate
 							class="article-share shrink-0 self-center"
 							title={ post.Title }
 							url={ meta.Canonical }
 							text={ post.Summary }
 						>
-							<button
-								type="button"
-								class="article-braille-host article-share-btn"
-								aria-label="記事を共有"
-							>
-								@home.ArticleShareBrailleIcon(post.Slug)
-							</button>
+							<div class="article-share-wrap">
+								<button
+									type="button"
+									class="article-braille-host article-share-btn"
+									aria-label="記事を共有"
+								>
+									@home.ArticleShareBrailleIcon(post.Slug)
+								</button>
+							</div>
 						</article-share>
 					</div>
 					<div class="flex flex-wrap items-center gap-3 text-sm text-base-content/45">
@@ -58,7 +61,15 @@ templ ShowPage(meta layout.PageMeta, post article.Article) {
 				</header>
 				<div class="article-prose">
 					@templ.Raw(post.HTML)
+					<article-linkcards class="contents"></article-linkcards>
 				</div>
+				<section class="border-t border-base-content/10 pt-10">
+					<is-land on:visible>
+						<template data-island>
+							<article-engagement slug={ post.Slug }></article-engagement>
+						</template>
+					</is-land>
+				</section>
 			</article>
 		</main>
 	}
@@ -69,7 +80,7 @@ templ TagPage(meta layout.PageMeta, tag string, articles []article.Article) {
 		<main class="flex flex-col gap-10">
 			<header class="space-y-3">
 				<p class="text-base-content/45 text-sm">
-					<a href="/" class="hover:text-base-content hover:underline">記事</a>
+					<a href="/" class="hover:text-base-content hover:underline">articles</a>
 					<span aria-hidden="true"> / </span>
 					<span>{ tag }</span>
 				</p>
