@@ -66,6 +66,8 @@
 
 ## 変更後の確認
 
+`just run`が動いていないとき:
+
 ```sh
 go tool templ generate -path internal/web
 just css
@@ -73,6 +75,14 @@ go test ./...
 go vet ./...
 just build
 ```
+
+`just run`実行中(air / css-watchが監視しているとき)は、ソースを編集すればホットリロードされる。次のリビルド系コマンドは走らせない(出力がぶつかり干渉する)。
+
+- `go tool templ generate` / `just generate`
+- `just css` / `just css-watch`
+- `just build` / `just check`
+
+`go test`や`go vet`は実行してよい。terminalsに`just run`やair / css-watchのactive commandがあるかで判定する。
 
 ## 文書の表記
 

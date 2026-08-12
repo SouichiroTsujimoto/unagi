@@ -27,12 +27,12 @@ func NotifyDevReload() {
 	if url == "" {
 		return
 	}
-	go func() {
-		client := &http.Client{Timeout: 300 * time.Millisecond}
-		resp, err := client.Post(url, "text/plain", nil)
-		if err != nil {
-			return
-		}
-		_ = resp.Body.Close()
-	}()
+	// Keep this short and synchronous so Air's next cycle cannot race ahead of
+	// the browser reload signal. Failure is non-fatal (hub may be restarting).
+	client := &http.Client{Timeout: 500 * time.Millisecond}
+	resp, err := client.Post(url, "text/plain", nil)
+	if err != nil {
+		return
+	}
+	_ = resp.Body.Close()
 }

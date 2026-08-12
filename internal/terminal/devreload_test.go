@@ -5,7 +5,6 @@ import (
 	"net/http/httptest"
 	"sync/atomic"
 	"testing"
-	"time"
 )
 
 func TestNotifyDevReloadPostsWhenEnvSet(t *testing.T) {
@@ -22,14 +21,9 @@ func TestNotifyDevReloadPostsWhenEnvSet(t *testing.T) {
 	t.Setenv(DevReloadNotifyEnv, srv.URL)
 	NotifyDevReload()
 
-	deadline := time.Now().Add(time.Second)
-	for time.Now().Before(deadline) {
-		if hits.Load() == 1 {
-			return
-		}
-		time.Sleep(10 * time.Millisecond)
+	if hits.Load() != 1 {
+		t.Fatalf("notify hits = %d, want 1", hits.Load())
 	}
-	t.Fatalf("notify hits = %d, want 1", hits.Load())
 }
 
 func TestNotifyDevReloadNoopWithoutEnv(t *testing.T) {

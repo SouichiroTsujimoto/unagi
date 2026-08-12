@@ -103,7 +103,7 @@ func (h *Hub) serveEvents(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Connection", "keep-alive")
 	w.Header().Set("Access-Control-Allow-Origin", "*")
 
-	ch := make(chan []byte, 4)
+	ch := make(chan []byte, 1)
 	h.mu.Lock()
 	h.clients[ch] = struct{}{}
 	h.mu.Unlock()
@@ -142,10 +142,14 @@ func (h *Hub) broadcast(msg []byte) {
 	h.mu.Lock()
 	defer h.mu.Unlock()
 	for ch := range h.clients {
+		// Latest-wins: drop a queued event so a slow tab still gets the newest reload.
+		select {
+		case <-ch:
+		default:
+		}
 		select {
 		case ch <- msg:
 		default:
-			// Slow client: drop this event rather than blocking notify.
 		}
 	}
 }

@@ -1,0 +1,25 @@
+---
+description: just run中はair/css-watchと干渉するリビルド系コマンドを走らせない
+alwaysApply: true
+---
+
+# just run中のリビルド禁止
+
+`just run`実行中はairが`templ generate`+Go rebuildを、css-watchが`styles.css`→`static/app.css`を監視する。ソース編集だけでホットリロードされる。
+
+## 判定
+
+terminalsに`just run`、air、またはcss-watchのactive commandがあるときは「実行中」とみなす。
+
+## 禁止(実行中のみ)
+
+- `go tool templ generate` / `just generate`
+- `just css` / `just css-watch`
+- `just build` / `just check`
+
+## 許可
+
+- ソース編集(`.templ` / `styles.css` / `.go` / islandsなど)
+- `go test` / `go vet`
+
+`just run`が動いていないときは、従来どおり生成・CSS・test・vet・buildで確認してよい。

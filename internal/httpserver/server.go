@@ -8,7 +8,9 @@ import (
 	"net"
 	"net/http"
 	"os"
+	"os/signal"
 	"strconv"
+	"syscall"
 	"time"
 
 	"github.com/SouichiroTsujimoto/unagi/internal/terminal"
@@ -64,18 +66,37 @@ func Run(handler http.Handler, config Config, log *slog.Logger) error {
 		})
 	}
 	log.Info("listening (HTTP)", "url", url, "pid", pid)
+
 	httpServer := &http.Server{
 		Handler:           handler,
 		ReadHeaderTimeout: 10 * time.Second,
-		BaseContext: func(net.Listener) context.Context {
-			terminal.NotifyDevReload()
-			return context.Background()
-		},
 	}
-	if err := httpServer.Serve(ln); err != nil && !errors.Is(err, http.ErrServerClosed) {
-		return fmt.Errorf("serve HTTP: %w", err)
+
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	defer stop()
+
+	errCh := make(chan error, 1)
+	go func() {
+		errCh <- httpServer.Serve(ln)
+	}()
+	// Notify after Serve has started so the Accept loop is ready for the
+	// browser reload that follows. Air sends SIGINT on rebuild; Shutdown
+	// releases :8080 before the next binary binds.
+	terminal.NotifyDevReload()
+
+	select {
+	case <-ctx.Done():
+		// Air kills via process-group SIGINT (sh -c ./tmp/main). Free :8080
+		// immediately with Close — Shutdown's connection drain races the next bind.
+		_ = httpServer.Close()
+		<-errCh
+		return nil
+	case err := <-errCh:
+		if err != nil && !errors.Is(err, http.ErrServerClosed) {
+			return fmt.Errorf("serve HTTP: %w", err)
+		}
+		return nil
 	}
-	return nil
 }
 
 func httpDisplayURL(addr string) string {

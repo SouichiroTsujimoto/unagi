@@ -9,8 +9,11 @@ exclude_dir = ["tmp", "bin", "tools", ".git", ".certmagic"]
 # styles.css is compiled by css-watch → static/app.css; only app.css should trigger a Go rebuild.
 # Keep watching Go under internal/web/css (themes.go); exclude the CSS source only.
 exclude_regex = ["_templ\\.go", "styles\\.css$"]
-include_ext = ["go", "templ", "css"]
-kill_delay = "2s"
+# js: islands are go:embed'd; edits must rebuild tmp/main.
+include_ext = ["go", "templ", "css", "js"]
+# httpserver closes the listener on SIGINT immediately; keep a short grace
+# window only for slow process-group teardown under Air's sh -c wrapper.
+kill_delay = "1s"
 send_interrupt = true
 stop_on_error = true
 

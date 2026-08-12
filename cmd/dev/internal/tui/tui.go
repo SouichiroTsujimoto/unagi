@@ -10,6 +10,7 @@ import (
 	"strings"
 	"sync"
 	"syscall"
+	"time"
 
 	"github.com/charmbracelet/bubbles/viewport"
 	tea "github.com/charmbracelet/bubbletea"
@@ -107,7 +108,15 @@ func RunDev(cfg DevConfig) error {
 	cfg.DB = cfg.DB.WithDefaults()
 	cfg.BannerStyle = terminal.NormalizeBanner(cfg.BannerStyle)
 
-	if stopReload := startReloadHub(); stopReload != nil {
+	if err := ensureDevPortsFree(cfg.Address); err != nil {
+		return err
+	}
+
+	stopReload, err := startReloadHub()
+	if err != nil {
+		return err
+	}
+	if stopReload != nil {
 		defer stopReload()
 	}
 
@@ -806,6 +815,19 @@ func stopAll(mu *sync.Mutex, cmds []*exec.Cmd) {
 		}
 		_ = syscall.Kill(-cmd.Process.Pid, syscall.SIGTERM)
 	}
+	deadline := time.Now().Add(2 * time.Second)
+	for _, cmd := range cmds {
+		if cmd.Process == nil {
+			continue
+		}
+		for time.Now().Before(deadline) {
+			if err := syscall.Kill(cmd.Process.Pid, 0); err != nil {
+				break
+			}
+			time.Sleep(50 * time.Millisecond)
+		}
+		_ = syscall.Kill(-cmd.Process.Pid, syscall.SIGKILL)
+	}
 }
 
 func runDevPlain(cfg DevConfig) error {
@@ -849,13 +871,24 @@ func plainDevEnviron() []string {
 	return out
 }
 
+// ensureDevPortsFree fails fast when another just run (or stray tmp/main) still
+// owns the app port. Silent sharing previously caused "address already in use"
+// on every Air restart and disabled browser reload when :8199 was taken.
+func ensureDevPortsFree(addr string) error {
+	ln, err := net.Listen("tcp", addr)
+	if err != nil {
+		return fmt.Errorf("dev: listen address %s is already in use (another `just run` or tmp/main still running?): %w", addr, err)
+	}
+	_ = ln.Close()
+	return nil
+}
+
 // startReloadHub starts the process-stable SSE hub used for browser auto-reload.
-// Returns a stop func, or nil when the hub could not start (feature disabled).
-func startReloadHub() func() {
+// Failure is fatal: without the hub, Air rebuilds never refresh open tabs.
+func startReloadHub() (func(), error) {
 	hub, err := reload.Start(reload.DefaultAddr)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "dev: reload hub disabled: %v\n", err)
-		return nil
+		return nil, fmt.Errorf("dev: reload hub on %s (another `just run` still running?): %w", reload.DefaultAddr, err)
 	}
 	_ = os.Setenv(terminal.DevReloadNotifyEnv, hub.NotifyURL())
 	_ = os.Setenv(terminal.DevReloadScriptEnv, hub.ScriptURL())
@@ -863,7 +896,7 @@ func startReloadHub() func() {
 		_ = hub.Close()
 		_ = os.Unsetenv(terminal.DevReloadNotifyEnv)
 		_ = os.Unsetenv(terminal.DevReloadScriptEnv)
-	}
+	}, nil
 }
 
 func httpDisplayURL(addr string) string {

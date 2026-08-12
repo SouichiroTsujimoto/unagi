@@ -15,6 +15,10 @@ css:
     fi
     ./tools/tailwindcss --silent -i ./internal/web/css/styles.css -o ./static/app.css --minify
 
+# Regenerate syntax-highlight CSS (chroma) for article code blocks.
+chroma-css:
+    go run ./tools/gen-chroma-css .
+
 # Fetch pinned ESM deps into static/vendor (Node not required). Versions: static/vendor/VERSIONS.txt
 vendor-islands:
     #!/usr/bin/env bash
