@@ -2,6 +2,7 @@ package article
 
 import (
 	"github.com/SouichiroTsujimoto/unagi/internal/feature/article"
+	"github.com/SouichiroTsujimoto/unagi/internal/web/home"
 	"github.com/SouichiroTsujimoto/unagi/internal/web/layout"
 )
 
@@ -15,13 +16,29 @@ templ ShowPage(meta layout.PageMeta, post article.Article) {
 						<span aria-hidden="true"> / </span>
 						<span>{ post.Title }</span>
 					</p>
-					<h1 class="text-2xl font-semibold tracking-tight leading-snug">
-						if post.Emoji != "" {
-							<span aria-hidden="true">{ post.Emoji }</span>
-							<span> </span>
-						}
-						{ post.Title }
-					</h1>
+					<div class="flex items-center justify-between gap-4">
+						<h1 class="min-w-0 text-2xl font-semibold tracking-tight leading-snug">
+							if post.Emoji != "" {
+								<span aria-hidden="true">{ post.Emoji }</span>
+								<span> </span>
+							}
+							{ post.Title }
+						</h1>
+						<article-share
+							class="article-share shrink-0 self-center"
+							title={ post.Title }
+							url={ meta.Canonical }
+							text={ post.Summary }
+						>
+							<button
+								type="button"
+								class="article-braille-host article-share-btn"
+								aria-label="記事を共有"
+							>
+								@home.ArticleShareBrailleIcon(post.Slug)
+							</button>
+						</article-share>
+					</div>
 					<div class="flex flex-wrap items-center gap-3 text-sm text-base-content/45">
 						if !post.PublishedAt.IsZero() {
 							<time datetime={ post.PublishedAt.Format("2006-01-02T15:04:05-07:00") }>
@@ -65,9 +82,9 @@ templ TagPage(meta layout.PageMeta, tag string, articles []article.Article) {
 			if len(articles) == 0 {
 				<p class="text-base-content/55 text-[15px]">該当する記事はまだありません。</p>
 			} else {
-				<ul class="divide-y divide-base-content/10">
+				<ul class="flex flex-col gap-10">
 					for _, post := range articles {
-						<li class="py-5 first:pt-0 last:pb-0">
+						<li>
 							<article class="space-y-2">
 								<a href={ templ.SafeURL(post.Path()) } class="group block space-y-2 focus-visible:outline-none">
 									<h2 class="text-[15px] font-medium tracking-tight group-hover:underline group-focus-visible:underline">
