@@ -246,8 +246,9 @@
 		display: block;
 		border-radius: 999px;
 		background: currentColor;
-		opacity: 0.12;
-		transform: scale(0.85);
+		opacity: 0;
+		/* transform: scale(1); */
+		transform: scale(0.9);
 		transition:
 			opacity 140ms ease,
 			transform 140ms ease;
@@ -256,7 +257,8 @@
 
 	.braille-dot.is-on {
 		opacity: 0.45;
-		transform: scale(1);
+		/* transform: scale(1); */
+		transform: scale(0.9);
 	}
 
 	.braille-cascade:is(:hover, :focus-visible) .braille-dot,
@@ -273,6 +275,35 @@
 
 	.dot-cascade.size-10x10:is(:hover, :focus-visible) .braille-dot {
 		transition-delay: calc(var(--i, 0) * 8ms);
+	}
+
+	/* Fixed back-to-top (braille ↑ cascade) */
+	.back-to-top {
+		position: fixed;
+		right: 1.25rem;
+		bottom: 1.25rem;
+		z-index: 40;
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		padding: 0;
+		border: 0;
+		border-radius: 0;
+		background: transparent;
+		color: var(--color-base-content);
+		font-size: 1rem;
+		line-height: 1;
+		text-decoration: none;
+		box-shadow: none;
+	}
+
+	.back-to-top:focus-visible {
+		outline: 2px solid color-mix(in oklab, var(--color-primary) 70%, transparent);
+		outline-offset: 2px;
+	}
+
+	.back-to-top .braille-dot.is-on {
+		opacity: 0.7;
 	}
 
 	.braille-swap-face,
@@ -301,20 +332,150 @@
 	.braille-swap-b,
 	.dot-swap-b {
 		opacity: 0;
-		transform: rotate(-90deg) scale(0.85);
+		transform: rotate(-90deg) scale(0.9);
 		color: var(--color-primary);
 	}
 
 	.braille-swap:is(:hover, :focus-visible) .braille-swap-a,
 	.dot-swap:is(:hover, :focus-visible) .dot-swap-a {
 		opacity: 0;
-		transform: rotate(90deg) scale(0.85);
+		transform: rotate(90deg) scale(0.9);
 	}
 
 	.braille-swap:is(:hover, :focus-visible) .braille-swap-b,
 	.dot-swap:is(:hover, :focus-visible) .dot-swap-b {
 		opacity: 1;
 		transform: rotate(0deg) scale(1);
+	}
+
+	/*
+	 * Article braille icons
+	 *
+	 * Markup (list & share share this shape):
+	 *   .article-braille-host > .article-braille-swap > .dot-swap-face
+	 *     > .dot-swap-a|.dot-swap-b > .dot-grid-face > .braille-dot
+	 *
+	 * Size lives only on .article-braille-swap (--dot/--gap) and
+	 * .article-braille-swap .dot-grid-face. Layers never set gap/scale.
+	 */
+	.article-post-icon-link,
+	.article-share {
+		display: inline-flex;
+		line-height: 1;
+	}
+
+	.article-post-icon-link {
+		align-self: start;
+	}
+
+	.article-share-btn {
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		padding: 0.4rem;
+		margin: -0.4rem;
+		border: 0;
+		border-radius: 0.5rem;
+		background: transparent;
+		color: inherit;
+		cursor: pointer;
+		font-size: 1.65rem; /* em-basis for --dot/--gap */
+		line-height: 1;
+	}
+
+	.article-share-btn:focus-visible {
+		outline: 2px solid color-mix(in oklab, var(--color-primary) 70%, transparent);
+		outline-offset: 2px;
+	}
+
+	.article-braille-swap {
+		--cols: 5;
+		--rows: 5;
+		--dot: 0.28em;
+		--gap: 0.08em;
+		display: inline-grid;
+		flex: none;
+		place-items: stretch;
+		width: calc(var(--cols) * var(--dot) + (var(--cols) - 1) * var(--gap));
+		height: calc(var(--rows) * var(--dot) + (var(--rows) - 1) * var(--gap));
+		color: var(--color-base-content);
+	}
+
+	.article-braille-swap .dot-swap-face,
+	.article-braille-swap .dot-swap-a,
+	.article-braille-swap .dot-swap-b {
+		display: grid;
+		width: 100%;
+		height: 100%;
+		place-items: stretch;
+	}
+
+	.article-braille-swap .dot-swap-a,
+	.article-braille-swap .dot-swap-b {
+		grid-area: 1 / 1;
+		transform-origin: center;
+		transition:
+			opacity 160ms ease,
+			transform 160ms ease,
+			color 160ms ease;
+		color: inherit;
+		outline: none;
+	}
+
+	.article-braille-swap .dot-swap-a {
+		transform: rotate(0deg);
+	}
+
+	.article-braille-swap .dot-swap-b {
+		opacity: 0;
+		transform: rotate(-90deg);
+		pointer-events: none;
+	}
+
+	/* Sole geometry rule for both noise and hover glyphs. */
+	.article-braille-swap .dot-grid-face {
+		width: 100%;
+		height: 100%;
+		grid-template-columns: repeat(var(--cols), var(--dot));
+		grid-template-rows: repeat(var(--rows), var(--dot));
+		gap: var(--gap);
+	}
+
+	.article-braille-swap .article-arrow-scroll .seed {
+		display: none;
+	}
+
+	.article-braille-swap .braille-dot {
+		opacity: 0;
+		transform: none;
+		color: var(--color-base-content);
+		transition: none;
+	}
+
+	.article-braille-swap .braille-dot.is-on {
+		opacity: 0.85;
+		transform: none;
+		color: inherit;
+	}
+
+	.article-braille-host:is(:hover, :focus-within) .article-braille-swap {
+		color: var(--color-primary);
+	}
+
+	.article-braille-host:is(:hover, :focus-within) .article-braille-swap .dot-swap-a {
+		opacity: 0;
+		transform: rotate(90deg);
+	}
+
+	.article-braille-host:is(:hover, :focus-within) .article-braille-swap .dot-swap-b {
+		opacity: 1;
+		transform: rotate(0deg);
+		color: var(--color-primary);
+	}
+
+	.article-braille-host:is(:hover, :focus-within) .article-braille-swap .braille-dot.is-on {
+		opacity: 1;
+		color: var(--color-primary);
 	}
 
 	.braille-waapi,
@@ -378,7 +539,9 @@
 		.braille-swap-a,
 		.braille-swap-b,
 		.dot-swap-a,
-		.dot-swap-b {
+		.dot-swap-b,
+		.article-braille-swap .dot-swap-a,
+		.article-braille-swap .dot-swap-b {
 			transition: none;
 		}
 
