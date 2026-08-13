@@ -199,7 +199,7 @@ func (a *Auth) StartXOAuth(returnTo string) (authorizeURL, verifier string, err 
 	}
 	redirectTo := strings.TrimRight(a.config.SiteBaseURL, "/") + CallbackPath
 	q := url.Values{}
-	q.Set("provider", "twitter")
+	q.Set("provider", "x")
 	q.Set("redirect_to", redirectTo)
 	q.Set("code_challenge", challenge)
 	q.Set("code_challenge_method", "S256")

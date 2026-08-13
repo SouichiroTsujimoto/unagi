@@ -429,7 +429,7 @@ func TestXAuthRoutes(t *testing.T) {
 	}
 	loc := rec.Header().Get("Location")
 	if !strings.Contains(loc, "http://127.0.0.1:54321/auth/v1/authorize") ||
-		!strings.Contains(loc, "provider=twitter") ||
+		!strings.Contains(loc, "provider=x") ||
 		!strings.Contains(loc, "code_challenge=") {
 		t.Fatalf("location=%q", loc)
 	}
