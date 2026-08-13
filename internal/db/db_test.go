@@ -10,12 +10,12 @@ func TestOpenPostgresHasSchema(t *testing.T) {
 	var n int
 	if err := database.NewSelect().
 		ColumnExpr("count(*)").
-		TableExpr("accounts").
+		TableExpr("articles").
 		Scan(t.Context(), &n); err != nil {
-		t.Fatalf("query accounts: %v", err)
+		t.Fatalf("query articles: %v", err)
 	}
 	if n != 0 {
-		t.Fatalf("accounts count = %d, want 0", n)
+		t.Fatalf("articles count = %d, want 0", n)
 	}
 }
 

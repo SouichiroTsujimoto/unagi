@@ -5,7 +5,7 @@ tmp_dir = "tmp"
 entrypoint = ["./tmp/main"]
 cmd = "go tool templ generate -path internal/web && CGO_ENABLED=0 go build -o ./tmp/main ./cmd/server"
 delay = 500
-exclude_dir = ["tmp", "bin", "tools", ".git", ".certmagic"]
+exclude_dir = ["tmp", "bin", "tools", ".git"]
 # styles.css is compiled by css-watch → static/app.css; only app.css should trigger a Go rebuild.
 # Keep watching Go under internal/web/css (themes.go); exclude the CSS source only.
 exclude_regex = ["_templ\\.go", "styles\\.css$"]

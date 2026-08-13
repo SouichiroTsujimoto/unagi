@@ -11,15 +11,12 @@ import (
 )
 
 func TestSupabaseStoreSendsSecretKeyOnApikeyOnly(t *testing.T) {
-	var gotAPIKey, gotAuth, gotPath, gotMethod, gotCacheControl string
+	var gotAPIKey, gotAuth, gotPath, gotMethod string
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		gotAPIKey = r.Header.Get("apikey")
 		gotAuth = r.Header.Get("Authorization")
 		gotPath = r.URL.Path
 		gotMethod = r.Method
-		if r.Method == http.MethodPost && strings.Contains(r.URL.Path, "/object/") && !strings.Contains(r.URL.Path, "/upload/sign/") {
-			gotCacheControl = r.Header.Get("Cache-Control")
-		}
 		switch {
 		case r.Method == http.MethodPost && strings.Contains(r.URL.Path, "/object/upload/sign/"):
 			w.Header().Set("Content-Type", "application/json")
@@ -51,20 +48,14 @@ func TestSupabaseStoreSendsSecretKeyOnApikeyOnly(t *testing.T) {
 		t.Fatalf("signedURL=%q token=%q", signedURL, token)
 	}
 
-	if err := store.Put(context.Background(), "dot.png", strings.NewReader("png"), "image/png", 3); err != nil {
+	exists, err := store.Exists(context.Background(), "dot.png")
+	if err != nil {
 		t.Fatal(err)
 	}
-	if gotAuth != "" {
-		t.Fatalf("put authorization should be empty, got %q", gotAuth)
-	}
-	if gotCacheControl != media.PublicCacheControl {
-		t.Fatalf("put cache-control=%q", gotCacheControl)
-	}
-
-	if err := store.Delete(context.Background(), "dot.png"); err != nil {
-		t.Fatal(err)
+	if !exists || gotMethod != http.MethodHead || !strings.HasSuffix(gotPath, "/object/images/dot.png") {
+		t.Fatalf("exists=%v request=%s %s", exists, gotMethod, gotPath)
 	}
 	if gotAuth != "" {
-		t.Fatalf("delete authorization should be empty, got %q", gotAuth)
+		t.Fatalf("head authorization should be empty, got %q", gotAuth)
 	}
 }

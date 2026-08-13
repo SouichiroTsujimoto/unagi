@@ -19,13 +19,13 @@ func TestRenameModule(t *testing.T) {
 	}
 	appGo := `package app
 
-import "github.com/SouichiroTsujimoto/unagi/internal/feature/account"
+import "github.com/SouichiroTsujimoto/unagi/internal/feature/article"
 `
 	if err := os.WriteFile(filepath.Join(src, "app.go"), []byte(appGo), 0o644); err != nil {
 		t.Fatal(err)
 	}
 	templGo := `package home
-import "github.com/SouichiroTsujimoto/unagi/internal/feature/account"
+import "github.com/SouichiroTsujimoto/unagi/internal/feature/article"
 `
 	if err := os.WriteFile(filepath.Join(src, "page_templ.go"), []byte(templGo), 0o644); err != nil {
 		t.Fatal(err)
@@ -47,14 +47,14 @@ import "github.com/SouichiroTsujimoto/unagi/internal/feature/account"
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !strings.Contains(string(appData), to+"/internal/feature/account") {
+	if !strings.Contains(string(appData), to+"/internal/feature/article") {
 		t.Fatalf("app.go not updated: %s", appData)
 	}
 	templData, err := os.ReadFile(filepath.Join(src, "page_templ.go"))
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !strings.Contains(string(templData), to+"/internal/feature/account") {
+	if !strings.Contains(string(templData), to+"/internal/feature/article") {
 		t.Fatalf("_templ.go not updated: %s", templData)
 	}
 }

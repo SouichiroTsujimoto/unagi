@@ -79,7 +79,6 @@ func resetTestData(t *testing.T, database *bun.DB) {
 		topics,
 		media,
 		link_card_cache,
-		accounts,
 		content_sync_runs
 	RESTART IDENTITY CASCADE`)
 	if err != nil {

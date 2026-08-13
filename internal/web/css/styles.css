@@ -505,8 +505,6 @@
 		overflow: auto;
 	}
 
-	/* Braille icon lab (experiment) */
-	.braille-cascade-grid,
 	.dot-grid-face {
 		display: grid;
 		grid-template-columns: repeat(var(--cols, 2), var(--dot, 0.42em));
@@ -515,36 +513,25 @@
 		color: var(--color-base-content);
 	}
 
-	.braille-cascade-grid {
-		--cols: 2;
-		--rows: 4;
-		--dot: 0.42em;
-		--gap: 0.14em;
-	}
-
 	.dot-cascade.size-2x4,
-	.dot-swap.size-2x4,
 	.dot-grid-waapi.size-2x4 {
 		--dot: 0.42em;
 		--gap: 0.14em;
 	}
 
 	.dot-cascade.size-3x3,
-	.dot-swap.size-3x3,
 	.dot-grid-waapi.size-3x3 {
 		--dot: 0.4em;
 		--gap: 0.12em;
 	}
 
 	.dot-cascade.size-5x5,
-	.dot-swap.size-5x5,
 	.dot-grid-waapi.size-5x5 {
 		--dot: 0.28em;
 		--gap: 0.08em;
 	}
 
 	.dot-cascade.size-10x10,
-	.dot-swap.size-10x10,
 	.dot-grid-waapi.size-10x10 {
 		--dot: 0.15em;
 		--gap: 0.045em;
@@ -569,12 +556,10 @@
 		transform: scale(0.9);
 	}
 
-	.braille-cascade:is(:hover, :focus-visible) .braille-dot,
 	.dot-cascade:is(:hover, :focus-visible) .braille-dot {
 		transition-delay: calc(var(--i, 0) * 28ms);
 	}
 
-	.braille-cascade:is(:hover, :focus-visible) .braille-dot.is-on,
 	.dot-cascade:is(:hover, :focus-visible) .braille-dot.is-on {
 		opacity: 1;
 		transform: scale(1.2);
@@ -684,7 +669,6 @@
 		opacity: 0.7;
 	}
 
-	.braille-swap-face,
 	.dot-swap-face {
 		position: relative;
 		display: inline-grid;
@@ -692,13 +676,6 @@
 		color: var(--color-base-content);
 	}
 
-	.braille-swap-face {
-		min-width: 1.5rem;
-		min-height: 1.5rem;
-	}
-
-	.braille-swap-a,
-	.braille-swap-b,
 	.dot-swap-a,
 	.dot-swap-b {
 		grid-area: 1 / 1;
@@ -707,23 +684,10 @@
 			transform 160ms ease;
 	}
 
-	.braille-swap-b,
 	.dot-swap-b {
 		opacity: 0;
 		transform: rotate(-90deg) scale(0.9);
 		color: var(--color-primary);
-	}
-
-	.braille-swap:is(:hover, :focus-visible) .braille-swap-a,
-	.dot-swap:is(:hover, :focus-visible) .dot-swap-a {
-		opacity: 0;
-		transform: rotate(90deg) scale(0.9);
-	}
-
-	.braille-swap:is(:hover, :focus-visible) .braille-swap-b,
-	.dot-swap:is(:hover, :focus-visible) .dot-swap-b {
-		opacity: 1;
-		transform: rotate(0deg) scale(1);
 	}
 
 	/*
@@ -906,7 +870,6 @@
 		color: inherit;
 	}
 
-	.braille-waapi,
 	.dot-grid-waapi {
 		display: inline-flex;
 		flex-direction: column;
@@ -918,25 +881,13 @@
 		outline: none;
 	}
 
-	.braille-waapi {
-		font-size: 1.5rem;
-	}
-
-	.braille-waapi:focus-visible,
 	.dot-grid-waapi:focus-visible,
-	.dot-cascade:focus-visible,
-	.dot-swap:focus-visible {
+	.dot-cascade:focus-visible {
 		outline: 2px solid color-mix(in oklab, var(--color-primary) 70%, transparent);
 		outline-offset: 2px;
 		border-radius: 0.25rem;
 	}
 
-	.braille-waapi .glyph {
-		min-width: 1.5rem;
-		text-align: center;
-	}
-
-	.braille-waapi .seed,
 	.dot-grid-waapi .seed {
 		max-width: 5.5rem;
 		overflow: hidden;
@@ -950,8 +901,7 @@
 		opacity: 0.85;
 	}
 
-	dot-grid-waapi,
-	braille-waapi {
+	dot-grid-waapi {
 		display: inline-block;
 		vertical-align: bottom;
 	}
@@ -1385,36 +1335,6 @@
 		}
 	}
 
-	.about-facts {
-		display: grid;
-		grid-template-columns: repeat(3, minmax(0, 1fr));
-		gap: 0.75rem 1rem;
-		margin: 0;
-		padding: 0.85rem 0;
-		border-block: 1px solid color-mix(in oklab, var(--color-base-content) 12%, transparent);
-	}
-
-	.about-fact {
-		display: flex;
-		flex-direction: column;
-		gap: 0.2rem;
-		min-width: 0;
-	}
-
-	.about-fact dt {
-		font-size: 0.75rem;
-		letter-spacing: 0.02em;
-		color: color-mix(in oklab, var(--color-base-content) 42%, transparent);
-	}
-
-	.about-fact dd {
-		margin: 0;
-		font-size: 0.9375rem;
-		font-weight: 500;
-		letter-spacing: -0.01em;
-		color: color-mix(in oklab, var(--color-base-content) 88%, transparent);
-	}
-
 	.about-socials {
 		display: flex;
 		flex-wrap: wrap;
@@ -1459,24 +1379,8 @@
 		}
 	}
 
-	@media (max-width: 28rem) {
-		.about-facts {
-			grid-template-columns: 1fr;
-			gap: 0.7rem;
-		}
-
-		.about-fact {
-			flex-direction: row;
-			align-items: baseline;
-			justify-content: space-between;
-			gap: 1rem;
-		}
-	}
-
 	@media (prefers-reduced-motion: reduce) {
 		.braille-dot,
-		.braille-swap-a,
-		.braille-swap-b,
 		.dot-swap-a,
 		.dot-swap-b,
 		.article-braille-swap .dot-swap-a,
@@ -1484,7 +1388,6 @@
 			transition: none;
 		}
 
-		.braille-cascade:is(:hover, :focus-visible) .braille-dot,
 		.dot-cascade:is(:hover, :focus-visible) .braille-dot,
 		.site-brand:is(:hover, :focus-visible) .site-brand-mark .braille-dot {
 			transition-delay: 0ms;

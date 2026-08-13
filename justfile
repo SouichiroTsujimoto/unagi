@@ -161,4 +161,4 @@ check: generate css
     CGO_ENABLED=0 go build -o bin/server ./cmd/server
 
 clean:
-    rm -rf bin tmp *.db *.db-*
+    rm -rf bin tmp

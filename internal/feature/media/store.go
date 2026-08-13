@@ -42,26 +42,6 @@ func (s *LocalStore) Put(_ context.Context, key string, r io.Reader, _ string, _
 	return err
 }
 
-func (s *LocalStore) Open(_ context.Context, key string) (io.ReadCloser, string, int64, error) {
-	if !validObjectKey(key) {
-		return nil, "", 0, ErrInvalidObject
-	}
-	path := filepath.Join(s.root, key)
-	f, err := os.Open(path)
-	if err != nil {
-		if os.IsNotExist(err) {
-			return nil, "", 0, ErrNotFound
-		}
-		return nil, "", 0, err
-	}
-	st, err := f.Stat()
-	if err != nil {
-		_ = f.Close()
-		return nil, "", 0, err
-	}
-	return f, "", st.Size(), nil
-}
-
 func (s *LocalStore) Exists(_ context.Context, key string) (bool, error) {
 	if !validObjectKey(key) {
 		return false, ErrInvalidObject
@@ -74,15 +54,4 @@ func (s *LocalStore) Exists(_ context.Context, key string) (bool, error) {
 		return false, nil
 	}
 	return false, err
-}
-
-func (s *LocalStore) Delete(_ context.Context, key string) error {
-	if !validObjectKey(key) {
-		return ErrInvalidObject
-	}
-	err := os.Remove(filepath.Join(s.root, key))
-	if os.IsNotExist(err) {
-		return nil
-	}
-	return err
 }

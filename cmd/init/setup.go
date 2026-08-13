@@ -54,7 +54,7 @@ func run(opts options) error {
 	}
 
 	title := lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("14"))
-	fmt.Println(title.Render("unigo-template init"))
+	fmt.Println(title.Render("unagi init"))
 
 	if current != ans.Module {
 		if err := renameModule(root, current, ans.Module); err != nil {

@@ -16,7 +16,7 @@ from pathlib import Path
 
 ALLOWED_EXT = {".png": "image/png", ".jpg": "image/jpeg", ".jpeg": "image/jpeg", ".webp": "image/webp", ".gif": "image/gif"}
 MAX_BYTES = 5 * 1024 * 1024
-# Keep in sync with media.PublicCacheControl (1 day, not immutable).
+# Uploaded content-addressed images may be replaced at the same key during recovery.
 CACHE_CONTROL = "public, max-age=86400"
 
 

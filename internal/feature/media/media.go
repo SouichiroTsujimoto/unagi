@@ -2,15 +2,9 @@ package media
 
 import (
 	"context"
-	"crypto/rand"
-	"crypto/sha256"
-	"database/sql"
-	"encoding/hex"
 	"errors"
 	"fmt"
-	"io"
 	"mime"
-	"net/http"
 	"path"
 	"strings"
 	"time"
@@ -20,13 +14,7 @@ import (
 
 const MaxUploadBytes = 5 << 20 // 5 MiB
 
-// PublicCacheControl is the Cache-Control value written on Storage uploads.
-// One day is long enough for a return visit, short enough that a same-URL
-// replace is visible by the next day. New bytes already get a new sha256 key.
-const PublicCacheControl = "public, max-age=86400"
-
 var (
-	ErrNotFound      = errors.New("media not found")
 	ErrTooLarge      = errors.New("file too large")
 	ErrInvalidType   = errors.New("unsupported content type")
 	ErrInvalidObject = errors.New("invalid object key")
@@ -42,9 +30,6 @@ var allowedTypes = map[string]string{
 // ObjectStore persists opaque binary objects.
 type ObjectStore interface {
 	SignUpload(ctx context.Context, key, contentType string) (signedURL, token string, err error)
-	Put(ctx context.Context, key string, r io.Reader, contentType string, size int64) error
-	Open(ctx context.Context, key string) (io.ReadCloser, string, int64, error)
-	Delete(ctx context.Context, key string) error
 	Exists(ctx context.Context, key string) (bool, error)
 }
 
@@ -74,11 +59,6 @@ type SignResult struct {
 	Token       string
 	ContentType string
 	MarkdownURL string
-}
-
-type UploadResult struct {
-	Media Media
-	URL   string
 }
 
 // ContentAddressedKey builds `{sha256}{ext}` from a hex digest and MIME type.
@@ -155,122 +135,8 @@ func (l *Library) Upsert(ctx context.Context, item Media) error {
 	return nil
 }
 
-// BeginUpload validates hints, generates an object key, and returns a path-limited signed upload URL.
-func (l *Library) BeginUpload(ctx context.Context, filename, contentType string, sizeBytes int64) (SignResult, error) {
-	if sizeBytes > MaxUploadBytes {
-		return SignResult{}, ErrTooLarge
-	}
-	ct := normalizeContentType(contentType, filename)
-	ext, ok := allowedTypes[ct]
-	if !ok {
-		return SignResult{}, ErrInvalidType
-	}
-	key, err := randomObjectKey(ext)
-	if err != nil {
-		return SignResult{}, err
-	}
-	signedURL, token, err := l.store.SignUpload(ctx, key, ct)
-	if err != nil {
-		return SignResult{}, fmt.Errorf("sign upload: %w", err)
-	}
-	return SignResult{
-		ObjectKey:   key,
-		SignedURL:   signedURL,
-		Token:       token,
-		ContentType: ct,
-		MarkdownURL: markdownURL(key),
-	}, nil
-}
-
-// CompleteUpload reads the uploaded object, validates it, and records a media row.
-// Invalid objects are deleted from storage.
-func (l *Library) CompleteUpload(ctx context.Context, key string) (UploadResult, error) {
-	key = strings.TrimPrefix(key, "/")
-	if !validObjectKey(key) {
-		return UploadResult{}, ErrInvalidObject
-	}
-	rc, storedType, _, err := l.store.Open(ctx, key)
-	if err != nil {
-		return UploadResult{}, err
-	}
-	data, err := io.ReadAll(io.LimitReader(rc, MaxUploadBytes+1))
-	_ = rc.Close()
-	if err != nil {
-		return UploadResult{}, fmt.Errorf("read object: %w", err)
-	}
-	if int64(len(data)) > MaxUploadBytes {
-		_ = l.store.Delete(ctx, key)
-		return UploadResult{}, ErrTooLarge
-	}
-	detected := normalizeContentType(http.DetectContentType(data), key)
-	if storedType != "" && detected == "application/octet-stream" {
-		detected = normalizeContentType(storedType, key)
-	}
-	if _, ok := allowedTypes[detected]; !ok {
-		_ = l.store.Delete(ctx, key)
-		return UploadResult{}, ErrInvalidType
-	}
-	sum := sha256.Sum256(data)
-	item := Media{
-		ObjectKey:   key,
-		ContentType: detected,
-		SizeBytes:   int64(len(data)),
-		SHA256:      hex.EncodeToString(sum[:]),
-		CreatedAt:   time.Now().UTC(),
-	}
-	if _, err := l.db.NewInsert().Model(&item).Exec(ctx); err != nil {
-		_ = l.store.Delete(ctx, key)
-		return UploadResult{}, fmt.Errorf("insert media: %w", err)
-	}
-	return UploadResult{Media: item, URL: markdownURL(key)}, nil
-}
-
 func markdownURL(key string) string {
 	return "/images/" + key
-}
-
-// GetByKey loads media metadata.
-func (l *Library) GetByKey(ctx context.Context, key string) (Media, error) {
-	key = strings.TrimPrefix(key, "/")
-	if !validObjectKey(key) {
-		return Media{}, ErrInvalidObject
-	}
-	var item Media
-	err := l.db.NewSelect().Model(&item).Where("object_key = ?", key).Scan(ctx)
-	if errors.Is(err, sql.ErrNoRows) {
-		return Media{}, ErrNotFound
-	}
-	if err != nil {
-		return Media{}, err
-	}
-	return item, nil
-}
-
-// Open streams an object for public delivery.
-func (l *Library) Open(ctx context.Context, key string) (Media, io.ReadCloser, error) {
-	item, err := l.GetByKey(ctx, key)
-	if err != nil {
-		return Media{}, nil, err
-	}
-	rc, contentType, size, err := l.store.Open(ctx, item.ObjectKey)
-	if err != nil {
-		return Media{}, nil, err
-	}
-	if contentType != "" {
-		item.ContentType = contentType
-	}
-	if size > 0 {
-		item.SizeBytes = size
-	}
-	return item, rc, nil
-}
-
-func randomObjectKey(ext string) (string, error) {
-	var b [16]byte
-	if _, err := rand.Read(b[:]); err != nil {
-		return "", err
-	}
-	return hex.EncodeToString(b[:]) + ext, nil
 }
 
 func validObjectKey(key string) bool {

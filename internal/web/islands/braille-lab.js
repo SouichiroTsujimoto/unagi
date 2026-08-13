@@ -4,13 +4,6 @@ function prefersReducedMotion() {
   return window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches ?? false;
 }
 
-function parseGlyphFrames(raw) {
-  return String(raw || "")
-    .split(",")
-    .map((s) => s.trim())
-    .filter(Boolean);
-}
-
 function parseGridFrames(raw) {
   return String(raw || "")
     .split("|")
@@ -21,53 +14,6 @@ function parseGridFrames(raw) {
 function sizeClass(cols, rows) {
   if (cols === 2 && rows === 4) return "size-2x4";
   return `size-${cols}x${rows}`;
-}
-
-class BrailleWaapi extends HTMLElement {
-  connectedCallback() {
-    if (this._mounted) return;
-    this._mounted = true;
-    this._gen = 0;
-    this._frames = parseGlyphFrames(this.getAttribute("frames"));
-    const seed = this.getAttribute("seed") || "";
-    const initial = this._frames[0] || "⠀";
-
-    this.classList.add("braille-waapi");
-    this.tabIndex = 0;
-    this.title = seed;
-    this.innerHTML =
-      `<span class="glyph" aria-hidden="true">${initial}</span>` +
-      `<span class="seed"></span>`;
-    this.querySelector(".seed").textContent = seed;
-    this._glyph = this.querySelector(".glyph");
-
-    this.addEventListener("pointerenter", () => this.play());
-    this.addEventListener("focus", () => this.play());
-  }
-
-  play() {
-    const frames = this._frames;
-    if (!frames.length || !this._glyph) return;
-    if (this._timer) {
-      clearInterval(this._timer);
-      this._timer = 0;
-    }
-    if (prefersReducedMotion()) {
-      this._glyph.textContent = frames[frames.length - 1] || frames[0];
-      return;
-    }
-    let i = 0;
-    this._glyph.textContent = frames[0];
-    this._timer = setInterval(() => {
-      i += 1;
-      if (i >= frames.length) {
-        clearInterval(this._timer);
-        this._timer = 0;
-        return;
-      }
-      this._glyph.textContent = frames[i];
-    }, 70);
-  }
 }
 
 class DotGridWaapi extends HTMLElement {
@@ -213,9 +159,6 @@ class DotGridWaapi extends HTMLElement {
   }
 }
 
-if (!customElements.get("braille-waapi")) {
-  customElements.define("braille-waapi", BrailleWaapi);
-}
 if (!customElements.get("dot-grid-waapi")) {
   customElements.define("dot-grid-waapi", DotGridWaapi);
 }

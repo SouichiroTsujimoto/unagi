@@ -1,112 +1,69 @@
 package media_test
 
 import (
-	"bytes"
 	"context"
-	"image"
-	"image/png"
-	"path/filepath"
+	"strings"
 	"testing"
+	"time"
 
 	"github.com/SouichiroTsujimoto/unagi/internal/db"
 	"github.com/SouichiroTsujimoto/unagi/internal/feature/media"
 )
 
-func pngBytes(t *testing.T) []byte {
-	t.Helper()
-	var buf bytes.Buffer
-	img := image.NewRGBA(image.Rect(0, 0, 2, 2))
-	if err := png.Encode(&buf, img); err != nil {
-		t.Fatal(err)
-	}
-	return buf.Bytes()
-}
-
-func TestBeginAndCompletePNG(t *testing.T) {
+func TestContentAddressedUpload(t *testing.T) {
 	database := db.OpenTest(t)
-	store, err := media.NewLocalStore(filepath.Join(t.TempDir(), "objects"))
+	store, err := media.NewLocalStore(t.TempDir())
 	if err != nil {
 		t.Fatal(err)
 	}
-	lib := media.New(database, store)
-	data := pngBytes(t)
+	library := media.New(database, store)
+	digest := strings.Repeat("a", 64)
+	key, err := media.ContentAddressedKey(digest, "image/png")
+	if err != nil {
+		t.Fatal(err)
+	}
 
-	signed, err := lib.BeginUpload(context.Background(), "dot.png", "image/png", int64(len(data)))
+	signed, err := library.BeginKeyedUpload(context.Background(), key, "image/png", 3)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if signed.MarkdownURL != "/images/"+signed.ObjectKey || signed.ContentType != "image/png" {
+	if signed.ObjectKey != key || signed.ContentType != "image/png" || signed.SignedURL == "" {
 		t.Fatalf("signed=%+v", signed)
 	}
-	if signed.SignedURL == "" || signed.Token == "" {
-		t.Fatal("missing signed url or token")
-	}
-
-	if err := store.Put(context.Background(), signed.ObjectKey, bytes.NewReader(data), "image/png", int64(len(data))); err != nil {
-		t.Fatal(err)
-	}
-	result, err := lib.CompleteUpload(context.Background(), signed.ObjectKey)
+	exists, err := library.Exists(context.Background(), key)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if result.URL != "/images/"+result.Media.ObjectKey || result.Media.ContentType != "image/png" || result.Media.SHA256 == "" {
-		t.Fatalf("result=%+v", result)
+	if exists {
+		t.Fatal("object should not exist before upload")
 	}
 
-	item, rc, err := lib.Open(context.Background(), result.Media.ObjectKey)
-	if err != nil {
+	if err := library.Upsert(context.Background(), media.Media{
+		ObjectKey:   key,
+		ContentType: "image/png",
+		SizeBytes:   3,
+		SHA256:      digest,
+		CreatedAt:   time.Now().UTC(),
+	}); err != nil {
 		t.Fatal(err)
-	}
-	defer rc.Close()
-	if item.SHA256 == "" {
-		t.Fatal("missing sha")
-	}
-
-	_, err = lib.BeginUpload(context.Background(), "x.txt", "text/plain", 5)
-	if err != media.ErrInvalidType {
-		t.Fatalf("want invalid type, got %v", err)
 	}
 }
 
-func TestRejectOversize(t *testing.T) {
+func TestContentAddressedUploadRejectsInvalidInput(t *testing.T) {
 	database := db.OpenTest(t)
-	store, err := media.NewLocalStore(filepath.Join(t.TempDir(), "o"))
+	store, err := media.NewLocalStore(t.TempDir())
 	if err != nil {
 		t.Fatal(err)
 	}
-	lib := media.New(database, store)
-	_, err = lib.BeginUpload(context.Background(), "big.png", "image/png", media.MaxUploadBytes+1)
-	if err != media.ErrTooLarge {
-		t.Fatalf("got %v", err)
-	}
-}
+	library := media.New(database, store)
 
-func TestCompleteRejectsMissingAndInvalid(t *testing.T) {
-	database := db.OpenTest(t)
-	store, err := media.NewLocalStore(filepath.Join(t.TempDir(), "o"))
-	if err != nil {
-		t.Fatal(err)
+	if _, err := media.ContentAddressedKey("invalid", "image/png"); err != media.ErrInvalidObject {
+		t.Fatalf("digest error=%v", err)
 	}
-	lib := media.New(database, store)
-
-	_, err = lib.CompleteUpload(context.Background(), "../escape.png")
-	if err != media.ErrInvalidObject {
-		t.Fatalf("escape: %v", err)
+	if _, err := library.BeginKeyedUpload(context.Background(), "../escape.png", "image/png", 3); err != media.ErrInvalidObject {
+		t.Fatalf("key error=%v", err)
 	}
-	_, err = lib.CompleteUpload(context.Background(), "missing.png")
-	if err != media.ErrNotFound {
-		t.Fatalf("missing: %v", err)
-	}
-
-	key := "bad.txt"
-	if err := store.Put(context.Background(), key, bytes.NewReader([]byte("hello")), "text/plain", 5); err != nil {
-		t.Fatal(err)
-	}
-	_, err = lib.CompleteUpload(context.Background(), key)
-	if err != media.ErrInvalidType {
-		t.Fatalf("invalid: %v", err)
-	}
-	if _, _, _, err := store.Open(context.Background(), key); err != media.ErrNotFound {
-		t.Fatalf("want deleted, got %v", err)
+	if _, err := library.BeginKeyedUpload(context.Background(), strings.Repeat("a", 64)+".png", "image/png", media.MaxUploadBytes+1); err != media.ErrTooLarge {
+		t.Fatalf("size error=%v", err)
 	}
 }

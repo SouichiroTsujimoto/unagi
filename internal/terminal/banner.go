@@ -91,7 +91,7 @@ func (r *bannerResolver) title() string {
 	if title := moduleBaseName("go.mod"); title != "" {
 		return title
 	}
-	return "unigo-template"
+	return "unagi"
 }
 
 func (r *bannerResolver) value(field string) string {
