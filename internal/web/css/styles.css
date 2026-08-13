@@ -1505,3 +1505,17 @@
 :root {
 	scrollbar-gutter: stable;
 }
+
+/* Theme toggle: html data-theme is set in <head> before the checkbox exists.
+   Unlayered so this beats daisyUI swap-rotate and avoids a sun→moon flash. */
+html[data-theme="black"] .site-header-theme.swap input:not(:checked) ~ .swap-on {
+	opacity: 1;
+	rotate: 0deg;
+	transition: none;
+}
+
+html[data-theme="black"] .site-header-theme.swap input:not(:checked) ~ .swap-off {
+	opacity: 0;
+	rotate: calc(45deg * -1);
+	transition: none;
+}

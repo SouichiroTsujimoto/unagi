@@ -20,6 +20,14 @@
   }
 
   apply(preferred());
+
+  // Included twice: in <head> (data-theme before CSS) and after the checkbox
+  // (checked before the swap SVGs paint). Bind listeners only once.
+  if (window.__unagiThemeInit) {
+    return;
+  }
+  window.__unagiThemeInit = true;
+
   if (document.readyState === "loading") {
     document.addEventListener("DOMContentLoaded", () => apply(preferred()), { once: true });
   }
