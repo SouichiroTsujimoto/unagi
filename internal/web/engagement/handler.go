@@ -4,31 +4,27 @@ import (
 	"errors"
 	"log/slog"
 	"net/http"
-	"net/url"
 	"strconv"
-	"strings"
 	"time"
 
 	"github.com/labstack/echo/v4"
 
 	featureauth "github.com/SouichiroTsujimoto/unagi/internal/feature/auth"
 	"github.com/SouichiroTsujimoto/unagi/internal/feature/engagement"
-	"github.com/SouichiroTsujimoto/unagi/internal/web/layout"
+	"github.com/SouichiroTsujimoto/unagi/internal/web/session"
 )
 
 type Handler struct {
 	engagement *engagement.Engagement
 	auth       *featureauth.Auth
-	site       layout.Site
 	log        *slog.Logger
 	now        func() time.Time
 }
 
-func New(eng *engagement.Engagement, a *featureauth.Auth, site layout.Site, log *slog.Logger) *Handler {
+func New(eng *engagement.Engagement, a *featureauth.Auth, log *slog.Logger) *Handler {
 	return &Handler{
 		engagement: eng,
 		auth:       a,
-		site:       site,
 		log:        log,
 		now:        time.Now,
 	}
@@ -169,14 +165,7 @@ func (h *Handler) viewerFromRequest(c echo.Context) *engagement.Viewer {
 }
 
 func (h *Handler) userFromRequest(c echo.Context) (featureauth.User, error) {
-	if h.auth == nil {
-		return featureauth.User{}, featureauth.ErrUnauthorized
-	}
-	cookie, err := c.Cookie(featureauth.CookieName)
-	if err != nil || cookie.Value == "" {
-		return featureauth.User{}, featureauth.ErrUnauthorized
-	}
-	return h.auth.ParseAccessToken(c.Request().Context(), cookie.Value)
+	return session.User(c, h.auth)
 }
 
 func (h *Handler) loginRequired(c echo.Context) error {
@@ -208,66 +197,5 @@ func (h *Handler) mapWriteError(c echo.Context, err error, sticker engagement.St
 }
 
 func (h *Handler) requireAllowedOrigin(c echo.Context) error {
-	origin := c.Request().Header.Get("Origin")
-	if origin == "" {
-		return nil
-	}
-	if h.auth != nil {
-		if !h.auth.ValidOrigin(origin) {
-			return echo.NewHTTPError(http.StatusForbidden, "invalid origin")
-		}
-		return nil
-	}
-	if !h.validOrigin(origin) {
-		return echo.NewHTTPError(http.StatusForbidden, "invalid origin")
-	}
-	return nil
-}
-
-func (h *Handler) validOrigin(origin string) bool {
-	base := strings.TrimSpace(h.site.BaseURL)
-	if base == "" {
-		return true
-	}
-	want, err := url.Parse(base)
-	if err != nil || want.Scheme == "" || want.Host == "" {
-		return false
-	}
-	got, err := url.Parse(origin)
-	if err != nil || got.Scheme == "" || got.Host == "" {
-		return false
-	}
-	if got.Scheme != want.Scheme {
-		return false
-	}
-	return sameHostPort(got.Hostname(), got.Port(), want.Hostname(), want.Port(), want.Scheme)
-}
-
-func sameHostPort(gotHost, gotPort, wantHost, wantPort, scheme string) bool {
-	if gotPort == "" {
-		if scheme == "https" {
-			gotPort = "443"
-		} else {
-			gotPort = "80"
-		}
-	}
-	if wantPort == "" {
-		if scheme == "https" {
-			wantPort = "443"
-		} else {
-			wantPort = "80"
-		}
-	}
-	if gotPort != wantPort {
-		return false
-	}
-	if strings.EqualFold(gotHost, wantHost) {
-		return true
-	}
-	return isLoopbackHost(gotHost) && isLoopbackHost(wantHost)
-}
-
-func isLoopbackHost(host string) bool {
-	host = strings.ToLower(host)
-	return host == "localhost" || host == "127.0.0.1" || host == "::1"
+	return session.RequireAllowedOrigin(c, h.auth)
 }

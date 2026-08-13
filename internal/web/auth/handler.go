@@ -4,11 +4,11 @@ import (
 	"errors"
 	"log/slog"
 	"net/http"
-	"strings"
 	"time"
 
 	featureauth "github.com/SouichiroTsujimoto/unagi/internal/feature/auth"
 	"github.com/SouichiroTsujimoto/unagi/internal/web/layout"
+	"github.com/SouichiroTsujimoto/unagi/internal/web/session"
 	"github.com/labstack/echo/v4"
 )
 
@@ -96,16 +96,7 @@ func (h *Handler) setSessionCookie(c echo.Context, user featureauth.User) {
 }
 
 func (h *Handler) clearSessionCookie(c echo.Context) {
-	c.SetCookie(&http.Cookie{
-		Name:     featureauth.CookieName,
-		Value:    "",
-		Path:     "/",
-		HttpOnly: true,
-		SameSite: http.SameSiteLaxMode,
-		Secure:   h.auth.SecureCookies(),
-		MaxAge:   -1,
-		Expires:  time.Unix(0, 0),
-	})
+	session.ClearCookie(c, featureauth.CookieName, h.auth.SecureCookies())
 }
 
 func (h *Handler) setPKCECookie(c echo.Context, value string) {
@@ -121,23 +112,10 @@ func (h *Handler) setPKCECookie(c echo.Context, value string) {
 }
 
 func (h *Handler) clearPKCECookie(c echo.Context) {
-	c.SetCookie(&http.Cookie{
-		Name:     featureauth.PKCECookieName,
-		Value:    "",
-		Path:     "/",
-		HttpOnly: true,
-		SameSite: http.SameSiteLaxMode,
-		Secure:   h.auth.SecureCookies(),
-		MaxAge:   -1,
-		Expires:  time.Unix(0, 0),
-	})
+	session.ClearCookie(c, featureauth.PKCECookieName, h.auth.SecureCookies())
 }
 
 // SessionFromRequest is used by tests and handlers sharing the cookie.
 func (h *Handler) SessionFromRequest(c echo.Context) (featureauth.User, error) {
-	cookie, err := c.Cookie(featureauth.CookieName)
-	if err != nil || strings.TrimSpace(cookie.Value) == "" {
-		return featureauth.User{}, featureauth.ErrUnauthorized
-	}
-	return h.auth.ParseAccessToken(c.Request().Context(), cookie.Value)
+	return session.User(c, h.auth)
 }

@@ -113,10 +113,9 @@ def main() -> None:
     secret = os.environ.get("UNIGO_CONTENT_SYNC_SECRET", "").strip()
     if not secret:
         raise SystemExit("UNIGO_CONTENT_SYNC_SECRET is required")
-    repository = os.environ.get("UNIGO_CONTENT_SYNC_REPOSITORY") or os.environ.get("GITHUB_REPOSITORY") or ""
-    repository = repository.strip()
+    repository = os.environ.get("GITHUB_REPOSITORY", "").strip()
     if not repository:
-        raise SystemExit("UNIGO_CONTENT_SYNC_REPOSITORY is required")
+        raise SystemExit("GITHUB_REPOSITORY is required")
     base = os.environ.get("UNIGO_SITE_BASE_URL", "").strip()
     if not base:
         raise SystemExit("UNIGO_SITE_BASE_URL is required")

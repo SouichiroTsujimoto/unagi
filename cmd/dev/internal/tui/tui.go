@@ -706,7 +706,6 @@ func startDevProcesses(cfg DevConfig) (appLogCh <-chan string, airLogCh <-chan s
 		cmd := exec.Command(name, args...)
 		env := append(devChildEnviron(),
 			"UNIGO_BANNER="+cfg.BannerStyle,
-			"UNIGO_DB_DRIVER="+cfg.DB.Driver,
 			"UNIGO_DB_DSN="+cfg.DB.DSN,
 			"UNIGO_DEV_TUI=1",
 			terminal.DevLogSockEnv+"="+terminal.DevLogSockPath,
@@ -851,7 +850,6 @@ func runDevPlain(cfg DevConfig) error {
 	// Plain mode: server owns the listen banner (do not set UNIGO_DEV_TUI).
 	cmd.Env = append(plainDevEnviron(),
 		"UNIGO_BANNER="+cfg.BannerStyle,
-		"UNIGO_DB_DRIVER="+cfg.DB.Driver,
 		"UNIGO_DB_DSN="+cfg.DB.DSN,
 	)
 	cmd.Stdout = os.Stdout

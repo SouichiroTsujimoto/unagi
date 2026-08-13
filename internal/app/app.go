@@ -23,28 +23,13 @@ import (
 	"github.com/SouichiroTsujimoto/unagi/internal/web/feed"
 	"github.com/SouichiroTsujimoto/unagi/internal/web/home"
 	"github.com/SouichiroTsujimoto/unagi/internal/web/islands"
-	"github.com/SouichiroTsujimoto/unagi/internal/web/layout"
 	weblinkcard "github.com/SouichiroTsujimoto/unagi/internal/web/linkcard"
 	"github.com/SouichiroTsujimoto/unagi/internal/web/sitemap"
 	"github.com/SouichiroTsujimoto/unagi/static"
 )
 
-type Config struct {
-	Address           string
-	DB                db.Config
-	Version           string
-	Banner            string
-	Site              layout.Site
-	Auth              featureauth.Config
-	MediaPublicBase       string
-	MediaBucket           string
-	SupabaseURL           string
-	SupabaseSecretKey     string
-	ContentSyncSecret     string
-	ContentSyncRepository string
-}
-
 func Run(config Config) error {
+	config = config.withDefaults()
 	log := terminal.NewLogger()
 	slog.SetDefault(log)
 
@@ -54,10 +39,12 @@ func Run(config Config) error {
 	}
 	defer database.Close()
 
-	articles := article.New(database)
-	articles.SetMediaPublicBase(config.MediaPublicBase)
 	cards := linkcard.New(database)
-	articles.SetEmbeds(cards)
+	articles := article.New(
+		database,
+		article.WithMediaPublicBase(config.MediaPublicBase),
+		article.WithEmbeds(cards),
+	)
 	eng := engagement.New(database, articles)
 
 	objectStore, err := openObjectStore(config)
@@ -66,8 +53,7 @@ func Run(config Config) error {
 	}
 	mediaLib := media.New(database, objectStore)
 	contentSync, err := contentsync.New(database, articles, mediaLib, contentsync.Config{
-		Secret:     config.ContentSyncSecret,
-		Repository: config.ContentSyncRepository,
+		Secret: config.ContentSyncSecret,
 	})
 	if err != nil {
 		return fmt.Errorf("content sync: %w", err)
@@ -79,24 +65,18 @@ func Run(config Config) error {
 	}
 
 	site := config.Site
-	if site.Name == "" {
-		site.Name = "unagi"
-	}
-	if site.Description == "" {
-		site.Description = "個人用のミニマルな技術ブログ"
-	}
 
 	handler := web.New(web.Handlers{
-		Home:       home.New(articles, site, log),
-		Article:    webarticle.New(articles, site, log),
-		About:      about.New(site, log),
-		Feed:       feed.New(articles, site, log),
-		Sitemap:    sitemap.New(articles, site, log),
+		Home:        home.New(articles, site, log),
+		Article:     webarticle.New(articles, site, log),
+		About:       about.New(site, log),
+		Feed:        feed.New(articles, site, log),
+		Sitemap:     sitemap.New(articles, site, log),
 		Admin:       admin.New(auth, articles, eng, site, log),
 		ContentSync: webcontentsync.New(contentSync, log),
-		Engagement:  webengagement.New(eng, auth, site, log),
-		LinkCard:   weblinkcard.New(cards, log),
-		Auth:       webauth.New(auth, site, log),
+		Engagement:  webengagement.New(eng, auth, log),
+		LinkCard:    weblinkcard.New(cards, log),
+		Auth:        webauth.New(auth, site, log),
 	}, static.FS(), islands.FS())
 
 	return httpserver.Run(handler, httpserver.Config{
@@ -108,13 +88,5 @@ func Run(config Config) error {
 }
 
 func openObjectStore(config Config) (media.ObjectStore, error) {
-	url := config.SupabaseURL
-	if url == "" {
-		url = config.Auth.SupabaseURL
-	}
-	bucket := config.MediaBucket
-	if bucket == "" {
-		bucket = "images"
-	}
-	return media.NewSupabaseStore(url, bucket, config.SupabaseSecretKey, nil)
+	return media.NewSupabaseStore(config.Auth.SupabaseURL, config.SupabaseSecretKey, nil)
 }

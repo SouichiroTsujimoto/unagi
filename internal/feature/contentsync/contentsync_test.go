@@ -31,7 +31,7 @@ func testSync(t *testing.T) (*Sync, *article.Articles, *media.Library, *media.Lo
 		t.Fatal(err)
 	}
 	lib := media.New(database, store)
-	s, err := New(database, articles, lib, Config{Secret: "test-secret", Repository: testRepo})
+	s, err := New(database, articles, lib, Config{Secret: "test-secret"})
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -7,14 +7,12 @@ tui = true
 
 [db]
 # Local Supabase Postgres (`supabase start`). Override with UNIGO_DB_DSN.
-driver = "postgres"
 dsn = "postgresql://postgres:postgres@127.0.0.1:54322/postgres"
 
 [site]
 name = "unagi"
 description = "wuhu1slandの技術ノート"
 base_url = "http://localhost:8080"
-# author = "your name"
 
 [banner]
 # Optional source image for the listen-banner ASCII logo.

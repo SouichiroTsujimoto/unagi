@@ -27,7 +27,7 @@ func TestSupabaseStoreSendsSecretKeyOnApikeyOnly(t *testing.T) {
 	}))
 	t.Cleanup(srv.Close)
 
-	store, err := media.NewSupabaseStore(srv.URL, "images", "sb_secret_test", srv.Client())
+	store, err := media.NewSupabaseStore(srv.URL, "sb_secret_test", srv.Client())
 	if err != nil {
 		t.Fatal(err)
 	}

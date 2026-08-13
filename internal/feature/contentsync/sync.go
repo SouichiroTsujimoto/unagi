@@ -13,11 +13,13 @@ import (
 	"github.com/uptrace/bun"
 )
 
-const advisoryLockKey int64 = 872314001
+const (
+	advisoryLockKey int64 = 872314001
+	Repository            = "SouichiroTsujimoto/unagi-content"
+)
 
 type Config struct {
-	Secret     string
-	Repository string
+	Secret string
 }
 
 type Sync struct {
@@ -29,10 +31,6 @@ type Sync struct {
 
 func New(db *bun.DB, articles *article.Articles, library *media.Library, cfg Config) (*Sync, error) {
 	cfg.Secret = strings.TrimSpace(cfg.Secret)
-	cfg.Repository = strings.TrimSpace(cfg.Repository)
-	if cfg.Repository == "" {
-		cfg.Repository = "SouichiroTsujimoto/unagi-content"
-	}
 	if articles == nil || db == nil {
 		return nil, fmt.Errorf("contentsync: db and articles are required")
 	}
@@ -47,7 +45,7 @@ func (s *Sync) Repository() string {
 	if s == nil {
 		return ""
 	}
-	return s.cfg.Repository
+	return Repository
 }
 
 func (s *Sync) Secret() string {
@@ -86,7 +84,7 @@ type dbSyncRun struct {
 }
 
 func (s *Sync) DryRun(ctx context.Context, snap Snapshot) (Result, error) {
-	articles, _, err := prepareSnapshot(snap, s.cfg.Repository)
+	articles, _, err := prepareSnapshot(snap, Repository)
 	if err != nil {
 		return Result{}, err
 	}
@@ -129,12 +127,11 @@ func (s *Sync) DryRun(ctx context.Context, snap Snapshot) (Result, error) {
 	}, nil
 }
 
-
 func (s *Sync) PlanUploads(ctx context.Context, snap Snapshot) ([]Upload, error) {
 	if s.media == nil {
 		return nil, fmt.Errorf("contentsync: media library is required")
 	}
-	_, images, err := prepareSnapshot(snap, s.cfg.Repository)
+	_, images, err := prepareSnapshot(snap, Repository)
 	if err != nil {
 		return nil, err
 	}
@@ -165,7 +162,7 @@ func (s *Sync) PlanUploads(ctx context.Context, snap Snapshot) ([]Upload, error)
 }
 
 func (s *Sync) Apply(ctx context.Context, snap Snapshot) (Result, error) {
-	articles, images, err := prepareSnapshot(snap, s.cfg.Repository)
+	articles, images, err := prepareSnapshot(snap, Repository)
 	if err != nil {
 		return Result{}, err
 	}

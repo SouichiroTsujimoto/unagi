@@ -22,16 +22,13 @@ func main() {
 	file := config.Load()
 	logo := file.Logo()
 	useTUI := file.TUIEnabled()
-	dbCfg := db.Config{Driver: file.DB.Driver, DSN: file.DB.DSN}.WithDefaults()
+	dbCfg := db.Config{DSN: file.DB.DSN}.WithDefaults()
 
 	if v, ok := envBool("UNIGO_LOGO"); ok {
 		logo = v
 	}
 	if v, ok := envBool("UNIGO_TUI"); ok {
 		useTUI = v
-	}
-	if v := strings.TrimSpace(os.Getenv("UNIGO_DB_DRIVER")); v != "" {
-		dbCfg.Driver = v
 	}
 	if v := strings.TrimSpace(os.Getenv("UNIGO_DB_DSN")); v != "" {
 		dbCfg.DSN = v
@@ -40,7 +37,6 @@ func main() {
 	logoFlag := flag.String("logo", "", "include ASCII logo in the startup banner (true|false)")
 	tuiFlag := flag.String("tui", "", "use the Bubble Tea development TUI (true|false)")
 	addr := flag.String("addr", ":8080", "listen address shown in the banner")
-	dbDriverFlag := flag.String("db-driver", "", "database driver shown/passed to the server (postgres)")
 	dbDSNFlag := flag.String("db", "", "database DSN shown/passed to the server")
 	flag.Parse()
 
@@ -49,9 +45,6 @@ func main() {
 	}
 	if v, ok := parseBoolFlag("tui", *tuiFlag); ok {
 		useTUI = v
-	}
-	if v := strings.TrimSpace(*dbDriverFlag); v != "" {
-		dbCfg.Driver = v
 	}
 	if v := strings.TrimSpace(*dbDSNFlag); v != "" {
 		dbCfg.DSN = v

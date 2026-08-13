@@ -9,28 +9,27 @@ import (
 	"strings"
 )
 
+const Bucket = "images"
+
 // SupabaseStore stores objects in a public Supabase Storage bucket via a secret API key.
 type SupabaseStore struct {
 	baseURL   string
-	bucket    string
 	secretKey string
 	client    *http.Client
 }
 
 // NewSupabaseStore builds a store. baseURL is the Supabase project URL (e.g. http://127.0.0.1:54321).
-func NewSupabaseStore(baseURL, bucket, secretKey string, client *http.Client) (*SupabaseStore, error) {
+func NewSupabaseStore(baseURL, secretKey string, client *http.Client) (*SupabaseStore, error) {
 	baseURL = strings.TrimRight(strings.TrimSpace(baseURL), "/")
-	bucket = strings.TrimSpace(bucket)
 	secretKey = strings.TrimSpace(secretKey)
-	if baseURL == "" || bucket == "" || secretKey == "" {
-		return nil, fmt.Errorf("supabase storage url, bucket, and secret key are required")
+	if baseURL == "" || secretKey == "" {
+		return nil, fmt.Errorf("supabase storage url and secret key are required")
 	}
 	if client == nil {
 		client = http.DefaultClient
 	}
 	return &SupabaseStore{
 		baseURL:   baseURL,
-		bucket:    bucket,
 		secretKey: secretKey,
 		client:    client,
 	}, nil
@@ -46,7 +45,7 @@ func (s *SupabaseStore) SignUpload(ctx context.Context, key, _ string) (string, 
 	if !validObjectKey(key) {
 		return "", "", ErrInvalidObject
 	}
-	url := fmt.Sprintf("%s/storage/v1/object/upload/sign/%s/%s", s.baseURL, s.bucket, key)
+	url := fmt.Sprintf("%s/storage/v1/object/upload/sign/%s/%s", s.baseURL, Bucket, key)
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, url, nil)
 	if err != nil {
 		return "", "", err
@@ -82,7 +81,7 @@ func (s *SupabaseStore) Exists(ctx context.Context, key string) (bool, error) {
 	if !validObjectKey(key) {
 		return false, ErrInvalidObject
 	}
-	url := fmt.Sprintf("%s/storage/v1/object/%s/%s", s.baseURL, s.bucket, key)
+	url := fmt.Sprintf("%s/storage/v1/object/%s/%s", s.baseURL, Bucket, key)
 	req, err := http.NewRequestWithContext(ctx, http.MethodHead, url, nil)
 	if err != nil {
 		return false, err

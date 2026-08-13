@@ -22,7 +22,6 @@ type Site struct {
 	Name        string
 	Description string
 	BaseURL     string
-	Author      string
 	MediaOrigin string
 }
 

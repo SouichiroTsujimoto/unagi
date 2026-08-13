@@ -263,8 +263,7 @@ func TestSaveRevisionKeepsPublishedStable(t *testing.T) {
 
 func TestRenderHTMLYouTubeLive(t *testing.T) {
 	t.Parallel()
-	a := New(nil)
-	a.SetEmbeds(linkcard.New(nil))
+	a := New(nil, WithEmbeds(linkcard.New(nil)))
 	html, err := a.RenderHTML(context.Background(), "hello\n\nhttps://www.youtube.com/watch?v=dQw4w9WgXcQ\n\nbye\n")
 	if err != nil {
 		t.Fatal(err)
@@ -279,8 +278,7 @@ func TestRenderHTMLYouTubeLive(t *testing.T) {
 
 func TestRenderHTMLPendingCard(t *testing.T) {
 	t.Parallel()
-	a := New(nil)
-	a.SetEmbeds(linkcard.New(nil))
+	a := New(nil, WithEmbeds(linkcard.New(nil)))
 	html, err := a.RenderHTML(context.Background(), "https://example.com/post\n")
 	if err != nil {
 		t.Fatal(err)

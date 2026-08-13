@@ -28,13 +28,11 @@ type Site struct {
 	Name        string `toml:"name"`
 	Description string `toml:"description"`
 	BaseURL     string `toml:"base_url"`
-	Author      string `toml:"author"`
 }
 
-// DB holds database connection defaults.
+// DB holds the Postgres connection default.
 type DB struct {
-	Driver string `toml:"driver"` // postgres
-	DSN    string `toml:"dsn"`
+	DSN string `toml:"dsn"`
 }
 
 // Dev holds development-launcher defaults.
@@ -62,8 +60,7 @@ func Default() File {
 			TUI:  &tui,
 		},
 		DB: DB{
-			Driver: "postgres",
-			DSN:    "postgresql://postgres:postgres@127.0.0.1:54322/postgres",
+			DSN: "postgresql://postgres:postgres@127.0.0.1:54322/postgres",
 		},
 		Banner: Banner{
 			Fields: []string{
@@ -84,7 +81,6 @@ func Default() File {
 			Name:        "unagi",
 			Description: "個人用のミニマルな技術ブログ",
 			BaseURL:     "http://localhost:8080",
-			Author:      "",
 		},
 	}
 }
@@ -122,9 +118,6 @@ func (f File) mergeDefaults() File {
 	}
 	if f.Dev.TUI == nil {
 		f.Dev.TUI = def.Dev.TUI
-	}
-	if strings.TrimSpace(f.DB.Driver) == "" {
-		f.DB.Driver = def.DB.Driver
 	}
 	if strings.TrimSpace(f.DB.DSN) == "" {
 		f.DB.DSN = def.DB.DSN

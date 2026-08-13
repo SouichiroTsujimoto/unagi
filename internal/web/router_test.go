@@ -46,9 +46,8 @@ func newTestRouter(t *testing.T) (*echoRouter, *article.Articles, *engagement.En
 	t.Helper()
 	database := db.OpenTest(t)
 
-	articles := article.New(database)
 	cards := linkcard.New(database)
-	articles.SetEmbeds(cards)
+	articles := article.New(database, article.WithEmbeds(cards))
 	eng := engagement.New(database, articles)
 	ctx := context.Background()
 	created, err := articles.Create(ctx, article.SaveInput{
@@ -73,8 +72,7 @@ func newTestRouter(t *testing.T) (*echoRouter, *article.Articles, *engagement.En
 	}
 	library := media.New(database, store)
 	contentSync, err := contentsync.New(database, articles, library, contentsync.Config{
-		Secret:     "router-sync-secret",
-		Repository: "SouichiroTsujimoto/unagi-content",
+		Secret: "router-sync-secret",
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -105,16 +103,16 @@ func newTestRouter(t *testing.T) (*echoRouter, *article.Articles, *engagement.En
 	}
 	log := slog.New(slog.NewTextHandler(io.Discard, nil))
 	router := web.New(web.Handlers{
-		Home:       home.New(articles, site, log),
-		Article:    webarticle.New(articles, site, log),
-		About:      about.New(site, log),
-		Feed:       feed.New(articles, site, log),
-		Sitemap:    sitemap.New(articles, site, log),
+		Home:        home.New(articles, site, log),
+		Article:     webarticle.New(articles, site, log),
+		About:       about.New(site, log),
+		Feed:        feed.New(articles, site, log),
+		Sitemap:     sitemap.New(articles, site, log),
 		Admin:       admin.New(auth, articles, eng, site, log),
 		ContentSync: webcontentsync.New(contentSync, log),
-		Engagement:  webengagement.New(eng, auth, site, log),
-		LinkCard:   weblinkcard.New(cards, log),
-		Auth:       webauth.New(auth, site, log),
+		Engagement:  webengagement.New(eng, auth, log),
+		LinkCard:    weblinkcard.New(cards, log),
+		Auth:        webauth.New(auth, site, log),
 	}, static.FS(), islands.FS())
 	return &echoRouter{handler: router, jwtKey: priv}, articles, eng, auth
 }

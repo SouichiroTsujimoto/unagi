@@ -13,20 +13,13 @@ import (
 	_ "github.com/jackc/pgx/v5/stdlib"
 )
 
-const DriverPostgres = "postgres"
-
-// Config selects the database backend (Postgres only).
+// Config holds the Postgres connection string.
 type Config struct {
-	Driver string // postgres (empty → postgres)
-	DSN    string // postgres URL
+	DSN string
 }
 
-// WithDefaults fills empty driver/DSN for local Supabase development.
+// WithDefaults fills an empty DSN for local Supabase development.
 func (c Config) WithDefaults() Config {
-	if strings.TrimSpace(c.Driver) == "" {
-		c.Driver = DriverPostgres
-	}
-	c.Driver = strings.ToLower(strings.TrimSpace(c.Driver))
 	if strings.TrimSpace(c.DSN) == "" {
 		c.DSN = "postgresql://postgres:postgres@127.0.0.1:54322/postgres"
 	}
@@ -39,7 +32,7 @@ func (c Config) Label() string {
 	if strings.TrimSpace(c.DSN) != "" {
 		return redactDSN(c.DSN)
 	}
-	return c.Driver
+	return "postgres"
 }
 
 func redactDSN(dsn string) string {
@@ -58,9 +51,6 @@ func redactDSN(dsn string) string {
 // Open connects with pgx and builds Bun. It does not apply SQL migrations.
 func Open(cfg Config) (*bun.DB, error) {
 	cfg = cfg.WithDefaults()
-	if cfg.Driver != DriverPostgres {
-		return nil, fmt.Errorf("unsupported db driver %q (use postgres)", cfg.Driver)
-	}
 	return openPostgres(cfg.DSN)
 }
 

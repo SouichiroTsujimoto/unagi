@@ -51,12 +51,9 @@ Vercel FunctionやMiddleware、External Rewriteは使わない。
 | `UNIGO_SITE_BASE_URL` | `https://unagi.wuhu1s.land` | |
 | `UNIGO_MEDIA_PUBLIC_BASE` | `https://YOUR_REF.supabase.co/storage/v1/object/public/images` | |
 | `UNIGO_CONTENT_SYNC_SECRET` | 記事同期HMAC用の長い乱数 | yes |
-| `UNIGO_CONTENT_SYNC_REPOSITORY` | `SouichiroTsujimoto/unagi-content` | |
-| `UNIGO_SITE_NAME` | 任意 | |
-| `UNIGO_SITE_DESCRIPTION` | 任意 | |
 | `PORT` | `8080`(`Dockerfile.vercel`の既定と同じ) | |
 
-`CLOUD_RUN_ORIGIN`は使わない。GitHub Actionsのrepository variablesにも入れない。
+サイト名と説明は`.unigo.toml`を正本とする。画像bucketは`images`、記事repositoryは`SouichiroTsujimoto/unagi-content`に固定しているため環境変数を設けない。`CLOUD_RUN_ORIGIN`も使わない。GitHub Actionsのrepository variablesにも入れない。
 
 `UNIGO_SITE_BASE_URL`をこのあと変えた場合は、Vercelの環境変数とSupabaseのSite URL / redirect URLを同じ値に揃えて再deployする。**ここがずれるとOAuth callbackとOriginチェックが落ちる。**症状はログインだけが失敗する形で出る。
 

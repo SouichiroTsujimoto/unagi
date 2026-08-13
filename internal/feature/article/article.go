@@ -112,18 +112,26 @@ type Articles struct {
 	mediaBase string
 }
 
-func New(db *bun.DB) *Articles {
-	return &Articles{db: db}
+type Option func(*Articles)
+
+func WithEmbeds(embeds MarkdownExpander) Option {
+	return func(a *Articles) {
+		a.embeds = embeds
+	}
 }
 
-// SetEmbeds attaches a link-card / embed expander used when rendering HTML.
-func (a *Articles) SetEmbeds(embeds MarkdownExpander) {
-	a.embeds = embeds
+func WithMediaPublicBase(base string) Option {
+	return func(a *Articles) {
+		a.mediaBase = strings.TrimRight(strings.TrimSpace(base), "/")
+	}
 }
 
-// SetMediaPublicBase rewrites Markdown `/images/...` paths to the Storage public base before HTML render.
-func (a *Articles) SetMediaPublicBase(base string) {
-	a.mediaBase = strings.TrimRight(strings.TrimSpace(base), "/")
+func New(db *bun.DB, opts ...Option) *Articles {
+	articles := &Articles{db: db}
+	for _, opt := range opts {
+		opt(articles)
+	}
+	return articles
 }
 
 // RenderHTML expands embeds (when configured) then converts Markdown to sanitized HTML.

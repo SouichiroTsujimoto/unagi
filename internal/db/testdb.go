@@ -29,7 +29,7 @@ const testAdvisoryLockKey int64 = 748291003
 // Uses a Postgres advisory lock so parallel packages do not TRUNCATE concurrently.
 func OpenTest(t *testing.T) *bun.DB {
 	t.Helper()
-	database, err := Open(Config{Driver: DriverPostgres, DSN: TestDSN()})
+	database, err := Open(Config{DSN: TestDSN()})
 	if err != nil {
 		t.Skipf("postgres unavailable (%v); run: supabase start", err)
 	}

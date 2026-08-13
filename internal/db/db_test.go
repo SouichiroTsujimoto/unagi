@@ -19,22 +19,10 @@ func TestOpenPostgresHasSchema(t *testing.T) {
 	}
 }
 
-func TestOpenUnsupportedDriver(t *testing.T) {
-	t.Parallel()
-
-	_, err := Open(Config{Driver: "mysql", DSN: "x"})
-	if err == nil {
-		t.Fatal("expected error for unsupported driver")
-	}
-}
-
 func TestConfigWithDefaults(t *testing.T) {
 	t.Parallel()
 
 	got := Config{}.WithDefaults()
-	if got.Driver != DriverPostgres {
-		t.Fatalf("driver = %q", got.Driver)
-	}
 	if got.DSN == "" {
 		t.Fatal("expected default DSN")
 	}

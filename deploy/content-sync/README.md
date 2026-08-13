@@ -6,16 +6,15 @@
 
 1. このアプリをdeployし、VercelのSensitive Environment Variableへ次を入れる。
    - `UNIGO_CONTENT_SYNC_SECRET`(長い乱数)
-   - `UNIGO_CONTENT_SYNC_REPOSITORY=SouichiroTsujimoto/unagi-content`
 2. 記事リポジトリのActions secrets/variablesへ同じ値を入れる。
    - secret: `UNIGO_CONTENT_SYNC_SECRET`
    - variable: `UNIGO_SITE_BASE_URL=https://unagi.wuhu1s.land`
-   - variable: `UNIGO_CONTENT_SYNC_REPOSITORY=SouichiroTsujimoto/unagi-content`
 3. 既存記事・画像を記事リポジトリの`main`へpushする。
 4. `sync` workflowが不足画像をStorageへPUTし、全量snapshotを`/api/content-sync/sync`へ送る。
 5. `/admin`で公開状態を確認する。既存slugは初回同期で公開状態を維持する。新規ファイルは下書きになる。
 
 DB DSNやSupabase secret keyは記事リポジトリに置かない。
+repository名はActions標準の`GITHUB_REPOSITORY`を使うため、追加variableは不要。
 
 ## 契約
 

@@ -6,12 +6,12 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
-	"time"
 
 	"github.com/SouichiroTsujimoto/unagi/internal/feature/article"
 	featureauth "github.com/SouichiroTsujimoto/unagi/internal/feature/auth"
 	"github.com/SouichiroTsujimoto/unagi/internal/feature/engagement"
 	"github.com/SouichiroTsujimoto/unagi/internal/web/layout"
+	"github.com/SouichiroTsujimoto/unagi/internal/web/session"
 	"github.com/a-h/templ"
 	"github.com/labstack/echo/v4"
 )
@@ -54,20 +54,15 @@ func (h *Handler) RequireOrigin(next echo.HandlerFunc) echo.HandlerFunc {
 		if c.Request().Method == http.MethodGet || c.Request().Method == http.MethodHead {
 			return next(c)
 		}
-		origin := c.Request().Header.Get("Origin")
-		if origin != "" && !h.auth.ValidOrigin(origin) {
-			return echo.NewHTTPError(http.StatusForbidden, "invalid origin")
+		if err := session.RequireAllowedOrigin(c, h.auth); err != nil {
+			return err
 		}
 		return next(c)
 	}
 }
 
 func (h *Handler) userFromRequest(c echo.Context) (featureauth.User, error) {
-	cookie, err := c.Cookie(featureauth.CookieName)
-	if err != nil || cookie.Value == "" {
-		return featureauth.User{}, featureauth.ErrUnauthorized
-	}
-	return h.auth.ParseAccessToken(c.Request().Context(), cookie.Value)
+	return session.User(c, h.auth)
 }
 
 func wantsJSON(c echo.Context) bool {
@@ -76,16 +71,7 @@ func wantsJSON(c echo.Context) bool {
 }
 
 func (h *Handler) clearSessionCookie(c echo.Context) {
-	c.SetCookie(&http.Cookie{
-		Name:     featureauth.CookieName,
-		Value:    "",
-		Path:     "/",
-		HttpOnly: true,
-		SameSite: http.SameSiteLaxMode,
-		Secure:   h.auth.SecureCookies(),
-		MaxAge:   -1,
-		Expires:  time.Unix(0, 0),
-	})
+	session.ClearCookie(c, featureauth.CookieName, h.auth.SecureCookies())
 }
 
 func (h *Handler) render(c echo.Context, component templ.Component) error {

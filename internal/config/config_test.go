@@ -70,7 +70,7 @@ func TestLoadPathPartialDevKeepsBannerDefault(t *testing.T) {
 	if !got.TUIEnabled() {
 		t.Fatal("expected tui default true")
 	}
-	if got.DB.Driver != "postgres" || !strings.Contains(got.DB.DSN, "54322") {
+	if !strings.Contains(got.DB.DSN, "54322") {
 		t.Fatalf("expected default postgres db, got %+v", got.DB)
 	}
 	if len(got.Banner.Fields) != len(Default().Banner.Fields) {
@@ -84,14 +84,13 @@ func TestLoadPathReadsDB(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "unigo.toml")
 	content := `
 [db]
-driver = "postgres"
 dsn = "postgres://localhost/unigo"
 `
 	if err := os.WriteFile(path, []byte(content), 0o644); err != nil {
 		t.Fatal(err)
 	}
 	got := LoadPath(path)
-	if got.DB.Driver != "postgres" || got.DB.DSN != "postgres://localhost/unigo" {
+	if got.DB.DSN != "postgres://localhost/unigo" {
 		t.Fatalf("db=%+v", got.DB)
 	}
 }
@@ -105,13 +104,12 @@ func TestLoadPathReadsSite(t *testing.T) {
 name = "myblog"
 description = "desc"
 base_url = "https://example.com"
-author = "me"
 `
 	if err := os.WriteFile(path, []byte(content), 0o644); err != nil {
 		t.Fatal(err)
 	}
 	got := LoadPath(path)
-	if got.Site.Name != "myblog" || got.Site.BaseURL != "https://example.com" || got.Site.Author != "me" {
+	if got.Site.Name != "myblog" || got.Site.BaseURL != "https://example.com" {
 		t.Fatalf("site=%+v", got.Site)
 	}
 }

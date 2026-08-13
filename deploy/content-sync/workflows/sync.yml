@@ -22,6 +22,5 @@ jobs:
       - name: Upload images and sync snapshot
         env:
           UNIGO_CONTENT_SYNC_SECRET: ${{ secrets.UNIGO_CONTENT_SYNC_SECRET }}
-          UNIGO_CONTENT_SYNC_REPOSITORY: ${{ vars.UNIGO_CONTENT_SYNC_REPOSITORY }}
           UNIGO_SITE_BASE_URL: ${{ vars.UNIGO_SITE_BASE_URL }}
         run: python3 scripts/content_sync.py sync
