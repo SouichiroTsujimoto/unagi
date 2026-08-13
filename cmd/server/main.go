@@ -66,11 +66,6 @@ func main() {
 
 	site := layoutSite(file)
 	authCfg := authConfig(site)
-	mediaBackend := envOr("UNIGO_MEDIA_BACKEND", "supabase")
-	mediaDir := envOr("UNIGO_MEDIA_DIR", "data/media")
-	if mediaBackend == "local" {
-		_ = app.EnsureDataDirs("data", mediaDir)
-	}
 
 	if err := app.Run(app.Config{
 		Address: listenAddr,
@@ -82,8 +77,6 @@ func main() {
 		Banner:            *banner,
 		Site:              site,
 		Auth:              authCfg,
-		MediaBackend:      mediaBackend,
-		MediaLocalDir:     mediaDir,
 		MediaPublicBase:   os.Getenv("UNIGO_MEDIA_PUBLIC_BASE"),
 		MediaBucket:       envOr("UNIGO_MEDIA_BUCKET", "images"),
 		SupabaseURL:       envOr("UNIGO_SUPABASE_URL", authCfg.SupabaseURL),

@@ -3,6 +3,7 @@ package media
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
@@ -40,6 +41,42 @@ func (s *SupabaseStore) authorize(req *http.Request) {
 	// Secret keys are not JWTs. Send them on apikey only.
 	// https://supabase.com/docs/guides/getting-started/migrating-to-new-api-keys
 	req.Header.Set("apikey", s.secretKey)
+}
+
+func (s *SupabaseStore) SignUpload(ctx context.Context, key, _ string) (string, string, error) {
+	if !validObjectKey(key) {
+		return "", "", ErrInvalidObject
+	}
+	url := fmt.Sprintf("%s/storage/v1/object/upload/sign/%s/%s", s.baseURL, s.bucket, key)
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, url, nil)
+	if err != nil {
+		return "", "", err
+	}
+	s.authorize(req)
+	res, err := s.client.Do(req)
+	if err != nil {
+		return "", "", err
+	}
+	defer res.Body.Close()
+	body, _ := io.ReadAll(io.LimitReader(res.Body, 8192))
+	if res.StatusCode < 200 || res.StatusCode >= 300 {
+		return "", "", fmt.Errorf("supabase storage sign: status %d: %s", res.StatusCode, strings.TrimSpace(string(body)))
+	}
+	var payload struct {
+		URL   string `json:"url"`
+		Token string `json:"token"`
+	}
+	if err := json.Unmarshal(body, &payload); err != nil {
+		return "", "", fmt.Errorf("supabase storage sign: decode: %w", err)
+	}
+	if payload.URL == "" {
+		return "", "", fmt.Errorf("supabase storage sign: empty url")
+	}
+	signed := payload.URL
+	if strings.HasPrefix(signed, "/") {
+		signed = s.baseURL + "/storage/v1" + signed
+	}
+	return signed, payload.Token, nil
 }
 
 func (s *SupabaseStore) Put(ctx context.Context, key string, r io.Reader, contentType string, size int64) error {

@@ -80,32 +80,7 @@ supabase-stop:
 supabase-status:
     supabase status -o env
 
-# One-time GCP + GitHub setup for deploys. Safe to re-run. See deploy/cloudrun/README.md.
-cloudrun-bootstrap:
-    bash deploy/cloudrun/bootstrap.sh
-
-# Push secret values from deploy/cloudrun/.env into Secret Manager.
-cloudrun-secret:
-    bash deploy/cloudrun/secret.sh
-
-# Manual release. Pushing to main normally does this via GitHub Actions.
-cloudrun-release:
-    bash deploy/cloudrun/build.sh
-    bash deploy/cloudrun/deploy.sh
-
-# Redeploy the current image (e.g. after changing site env vars).
-cloudrun-deploy:
-    bash deploy/cloudrun/deploy.sh
-
-# Tail the last 50 Cloud Run log lines.
-cloudrun-logs:
-    #!/usr/bin/env bash
-    set -euo pipefail
-    source deploy/cloudrun/config.sh
-    gcloud run services logs read "${CLOUD_RUN_SERVICE}" \
-      --project="${GCP_PROJECT}" --region="${GCP_REGION}" --limit=50
-
-# Linux amd64 binary (Cloud Run / containers).
+# Linux amd64 binary (Vercel container / distroless).
 build-linux:
     #!/usr/bin/env bash
     set -euo pipefail

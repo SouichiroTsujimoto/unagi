@@ -69,7 +69,7 @@ func newTestRouter(t *testing.T) (*echoRouter, *article.Articles, *engagement.En
 	if err != nil {
 		t.Fatal(err)
 	}
-	library := media.New(database, store, "https://cdn.example/images")
+	library := media.New(database, store)
 	priv, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
 	if err != nil {
 		t.Fatal(err)
@@ -303,6 +303,55 @@ func TestEngagementRoutes(t *testing.T) {
 
 func itoa(v int64) string {
 	return strconv.FormatInt(v, 10)
+}
+
+func TestAdminMediaSignRequiresAuth(t *testing.T) {
+	router, _, _, _ := newTestRouter(t)
+
+	req := httptest.NewRequest(http.MethodPost, "/api/admin/media/sign", strings.NewReader(`{"filename":"dot.png","contentType":"image/png","sizeBytes":12}`))
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Accept", "application/json")
+	req.Header.Set("Origin", "http://localhost:8080")
+	rec := httptest.NewRecorder()
+	router.ServeHTTP(rec, req)
+	if rec.Code != http.StatusUnauthorized {
+		t.Fatalf("anon status=%d body=%s", rec.Code, rec.Body.String())
+	}
+
+	admin := signReaderJWT(t, router.jwtKey, "11111111-1111-1111-1111-111111111111", "souic", "souic", "")
+	cookie := featureauth.CookieName + "=" + admin
+
+	req = httptest.NewRequest(http.MethodPost, "/api/admin/media/sign", strings.NewReader(`{"filename":"dot.png","contentType":"image/png","sizeBytes":12}`))
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Accept", "application/json")
+	req.Header.Set("Origin", "https://evil.example")
+	req.Header.Set("Cookie", cookie)
+	rec = httptest.NewRecorder()
+	router.ServeHTTP(rec, req)
+	if rec.Code != http.StatusForbidden {
+		t.Fatalf("evil origin status=%d body=%s", rec.Code, rec.Body.String())
+	}
+
+	req = httptest.NewRequest(http.MethodPost, "/api/admin/media/sign", strings.NewReader(`{"filename":"dot.png","contentType":"image/png","sizeBytes":12}`))
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Accept", "application/json")
+	req.Header.Set("Origin", "http://localhost:8080")
+	req.Header.Set("Cookie", cookie)
+	rec = httptest.NewRecorder()
+	router.ServeHTTP(rec, req)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("admin sign status=%d body=%s", rec.Code, rec.Body.String())
+	}
+	var signed struct {
+		ObjectKey string `json:"objectKey"`
+		URL       string `json:"url"`
+	}
+	if err := json.Unmarshal(rec.Body.Bytes(), &signed); err != nil {
+		t.Fatal(err)
+	}
+	if signed.ObjectKey == "" || signed.URL != "/images/"+signed.ObjectKey {
+		t.Fatalf("signed=%+v", signed)
+	}
 }
 
 func TestXAuthRoutes(t *testing.T) {

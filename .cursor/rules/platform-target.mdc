@@ -1,5 +1,5 @@
 ---
-description: 本番プラットフォーム(Cloud Run + Supabase一式)
+description: 本番プラットフォーム(Vercel container + Supabase一式)
 alwaysApply: true
 ---
 
@@ -9,10 +9,10 @@ alwaysApply: true
 
 ## 採用
 
-- 計算: distroless コンテナを Cloud Run(東京、min-instances=0)
-- 入口 / TLS: Vercelの独自ドメインをExternal RewriteでCloud Runへ転送する。Vercel Function / Middleware、Cloud Run domain mapping、CertMagicは使わない
+- 計算: distroless コンテナを Vercel(`Dockerfile.vercel`、東京`hnd1`)
+- 入口 / TLS: 同じVercel projectの独自ドメイン。Vercel Function / Middleware、External Rewrite、Cloud Run domain mapping、CertMagicは使わない
 - DB: Supabase Postgres。ローカルは `supabase start`。sqlite はない
-- 画像: Supabase Storage、公開読み、同梱 CDN。Go の `/images` プロキシはない
+- 画像: Supabase Storage、公開読み、同梱 CDN。browserはsigned URLで直接uploadする。Go の `/images` プロキシはない
 - 認証: Supabase Auth。admin(passkey + UUID allowlist)と読者Xログインは `internal/feature/auth`
 - Auth の実装: Go が JWT / GoTrue を検証する。island に supabase-js を入れない
 - CMSの業務(記事・スタンプ・コメントのルール、templ、islands)はGoに残す
@@ -20,7 +20,7 @@ alwaysApply: true
 
 ## 採用しない
 
-- Nanos / GCE unikernel、CertMagic、自前 WebAuthn サーバ、メディア用 GCS
+- Cloud Run、Firebase Hosting、Nanos / GCE unikernel、CertMagic、自前 WebAuthn サーバ、メディア用 GCS
 - Turso + R2 + Cloudflare CDN
 - Cloudflare 一式(Workers / D1 / Access)
 - Fastly、Cloud CDN

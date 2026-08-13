@@ -4,8 +4,6 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
-	"os"
-	"strings"
 
 	sitecontent "github.com/SouichiroTsujimoto/unagi"
 	"github.com/SouichiroTsujimoto/unagi/internal/db"
@@ -39,8 +37,6 @@ type Config struct {
 	Banner            string
 	Site              layout.Site
 	Auth              featureauth.Config
-	MediaBackend      string // local | supabase
-	MediaLocalDir     string
 	MediaPublicBase   string
 	MediaBucket       string
 	SupabaseURL       string
@@ -76,7 +72,7 @@ func Run(config Config) error {
 	if err != nil {
 		return err
 	}
-	mediaLib := media.New(database, objectStore, config.MediaPublicBase)
+	mediaLib := media.New(database, objectStore)
 
 	auth, err := featureauth.New(config.Auth)
 	if err != nil {
@@ -113,41 +109,13 @@ func Run(config Config) error {
 }
 
 func openObjectStore(config Config) (media.ObjectStore, error) {
-	backend := strings.ToLower(strings.TrimSpace(config.MediaBackend))
-	if backend == "" {
-		backend = "supabase"
+	url := config.SupabaseURL
+	if url == "" {
+		url = config.Auth.SupabaseURL
 	}
-	switch backend {
-	case "local":
-		dir := config.MediaLocalDir
-		if dir == "" {
-			dir = "data/media"
-		}
-		return media.NewLocalStore(dir)
-	case "supabase":
-		url := config.SupabaseURL
-		if url == "" {
-			url = config.Auth.SupabaseURL
-		}
-		bucket := config.MediaBucket
-		if bucket == "" {
-			bucket = "images"
-		}
-		return media.NewSupabaseStore(url, bucket, config.SupabaseSecretKey, nil)
-	default:
-		return nil, fmt.Errorf("unsupported media backend %q", backend)
+	bucket := config.MediaBucket
+	if bucket == "" {
+		bucket = "images"
 	}
-}
-
-// EnsureDataDirs creates local directories used by the local media backend.
-func EnsureDataDirs(paths ...string) error {
-	for _, p := range paths {
-		if strings.TrimSpace(p) == "" {
-			continue
-		}
-		if err := os.MkdirAll(p, 0o755); err != nil {
-			return err
-		}
-	}
-	return nil
+	return media.NewSupabaseStore(url, bucket, config.SupabaseSecretKey, nil)
 }

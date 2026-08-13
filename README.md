@@ -1,10 +1,10 @@
 # unagi
 
-個人用のミニマルな技術ブログ。Goワンバイナリ(Echo / templ / is-land / Preact) + Supabase(Postgres / Auth / Storage) + Cloud Run(distroless)。
+個人用のミニマルな技術ブログ。Goワンバイナリ(Echo / templ / is-land / Preact) + Supabase(Postgres / Auth / Storage) + Vercel(`Dockerfile.vercel`、東京)。
 
 [unigo-template](https://github.com/SouichiroTsujimoto/unigo-template)から作成しています。
 
-設計の不変条件は[AGENTS.md](AGENTS.md)。Cloud Run手順は[deploy/cloudrun/README.md](deploy/cloudrun/README.md)。
+設計の不変条件は[AGENTS.md](AGENTS.md)。本番手順は[deploy/README.md](deploy/README.md)。
 
 ## 開発
 
@@ -44,8 +44,8 @@ jj git push
 - 公開記事の正本はSupabase Postgres。埋め込み`articles/`は空DB時のseed用
 - schemaは`supabase/migrations/`。mainへのpushでGitHub integrationが適用する。アプリは起動時にmigrateしない
 - 管理: `/admin`(Supabase Auth passkey + `UNIGO_ADMIN_USER_IDS`)。読者ログインはX(Twitter) provider
-- 画像はSupabase Storage公開バケット。Markdownの`/images/...`は公開ベースURLへ書き換え。アプリは`GET /images`を持たない
-- 独自ドメインとTLSはVercelで終端し、External RewriteでCloud Runへ転送。アプリはHTTPのみ(`PORT`)
+- 画像はSupabase Storage公開バケット。管理画面はsigned URLで直接uploadし、Markdownの`/images/...`は公開ベースURLへ書き換え。アプリは`GET /images`を持たない
+- 独自ドメインとTLSはVercelで終端し、同じprojectの`Dockerfile.vercel`コンテナ(東京`hnd1`)がアプリを動かす。アプリはHTTPのみ(`PORT`)
 
 ## License
 

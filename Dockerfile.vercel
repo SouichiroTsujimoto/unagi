@@ -1,5 +1,5 @@
 # Build stage. Runs on the builder's own arch and cross-compiles, so an
-# arm64 machine building for Cloud Run does not pay for emulation.
+# arm64 machine building for Vercel does not pay for emulation.
 FROM --platform=$BUILDPLATFORM golang:1.26-bookworm AS build
 WORKDIR /src
 COPY go.mod go.sum ./
@@ -15,5 +15,6 @@ RUN CGO_ENABLED=0 GOOS=${TARGETOS} GOARCH=${TARGETARCH} \
 FROM gcr.io/distroless/static-debian13:nonroot
 COPY --from=build /out/server /server
 USER nonroot:nonroot
+ENV PORT=8080
 EXPOSE 8080
 ENTRYPOINT ["/server"]

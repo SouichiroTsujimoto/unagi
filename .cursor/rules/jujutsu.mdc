@@ -12,15 +12,39 @@ alwaysApply: true
 - `git status` → `jj status`
 - `git diff` → `jj diff`
 - `git log` → `jj log`
-- `git commit` → `jj commit` / `jj describe`
+- `git commit` → `jj describe` + `jj new`(または`jj commit`)
 - `git pull` → `jj git fetch`(必要なら`jj rebase -d main@origin`)
 - `git push` → `jj git push`(必要なら先に`jj bookmark move <name> --to @-`、または`jj git push -c @-`)
 
 PR作成は従来どおり`gh`。リモートへの反映だけ`jj git push`を使う。
 
+## describe + new(エージェントが自主実行する)
+
+意味のある区切りがついたら、依頼を待たず`jj describe`して`jj new`する。jjならあとから戻せる。
+
+やるとき:
+
+- 機能や修正が一区切りつき、テストが通ったあと
+- 次の作業へ移る前、またはターンを終える前
+- 作業コピーにコミットしてよい差分があるとき
+
+やらないとき:
+
+- 差分がない、または編集の途中で壊れている
+- 秘密(`.env`、credentials、signing key)が混ざる
+- ユーザが今の変更をまだ積みたいと示している
+
+手順:
+
+1. `jj status`と`jj diff --stat`で秘密が混ざっていないか見る
+2. `jj describe -m "..."`(日本語、いまの差分だけを表す一文)
+3. `jj new`
+
+`@`に既に説明がある変更へ追記するなら、説明を更新してから`jj new`する。空の`jj new`を重ねない。
+
 ## 安全規約
 
-- commit / push / bookmark移動はユーザが明示したときだけ行う。
+- push / bookmark移動はユーザが明示したときだけ行う。
 - `.jj/`や`~/.config/jj`は編集・コミットしない。
 - 秘密情報(`.env`、credentialsなど)をcommitに含めない。
 - `main`へのforce相当、破壊的な`jj abandon` / `jj undo`の乱用は、ユーザ明示時以外しない。

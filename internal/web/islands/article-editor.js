@@ -124,18 +124,29 @@ function ArticleEditor(props) {
   async function upload(ev) {
     const file = ev.target.files?.[0];
     if (!file) return;
-    const form = new FormData();
-    form.append("file", file);
     setBusy(true);
     try {
-      const res = await fetch("/api/admin/media", {
-        method: "POST",
-        body: form,
+      const signed = await api("/api/admin/media/sign", "POST", {
+        filename: file.name,
+        contentType: file.type,
+        sizeBytes: file.size,
       });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data?.message || "upload failed");
-      setBodyMd((prev) => `${prev.trimEnd()}\n\n![](${data.url})\n`);
-      setMessage(`画像を追加: ${data.url}`);
+      let putUrl = signed.signedUrl;
+      if (signed.token && !String(putUrl).includes("token=")) {
+        putUrl += (String(putUrl).includes("?") ? "&" : "?") + "token=" + encodeURIComponent(signed.token);
+      }
+      const up = await fetch(putUrl, {
+        method: "PUT",
+        headers: { "Content-Type": signed.contentType || file.type },
+        body: file,
+      });
+      if (!up.ok) {
+        throw new Error("storage upload failed");
+      }
+      const data = await api("/api/admin/media/complete", "POST", { objectKey: signed.objectKey });
+      const markdownUrl = data.url || `/images/${signed.objectKey}`;
+      setBodyMd((prev) => `${prev.trimEnd()}\n\n![](${markdownUrl})\n`);
+      setMessage(`画像を追加: ${markdownUrl}`);
     } catch (err) {
       setMessage(err.message || String(err));
     } finally {

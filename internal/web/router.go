@@ -82,7 +82,8 @@ func New(h Handlers, staticFiles, islandFiles fs.FS) *echo.Echo {
 	adminAPI.PATCH("/articles/:id/comments/:commentID", h.Admin.UpdateComment)
 	adminAPI.DELETE("/articles/:id/comments", h.Admin.DeleteComments)
 	adminAPI.POST("/preview", h.Admin.Preview)
-	adminAPI.POST("/media", h.Media.Upload)
+	adminAPI.POST("/media/sign", h.Media.SignUpload)
+	adminAPI.POST("/media/complete", h.Media.CompleteUpload)
 
 	return router
 }

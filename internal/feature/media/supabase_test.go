@@ -11,11 +11,19 @@ import (
 )
 
 func TestSupabaseStoreSendsSecretKeyOnApikeyOnly(t *testing.T) {
-	var gotAPIKey, gotAuth string
+	var gotAPIKey, gotAuth, gotPath, gotMethod string
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		gotAPIKey = r.Header.Get("apikey")
 		gotAuth = r.Header.Get("Authorization")
-		w.WriteHeader(http.StatusOK)
+		gotPath = r.URL.Path
+		gotMethod = r.Method
+		switch {
+		case r.Method == http.MethodPost && strings.Contains(r.URL.Path, "/object/upload/sign/"):
+			w.Header().Set("Content-Type", "application/json")
+			_, _ = w.Write([]byte(`{"url":"/object/upload/sign/images/dot.png?token=abc","token":"abc"}`))
+		default:
+			w.WriteHeader(http.StatusOK)
+		}
 	}))
 	t.Cleanup(srv.Close)
 
@@ -23,7 +31,8 @@ func TestSupabaseStoreSendsSecretKeyOnApikeyOnly(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := store.Put(context.Background(), "dot.png", strings.NewReader("png"), "image/png", 3); err != nil {
+	signedURL, token, err := store.SignUpload(context.Background(), "dot.png", "image/png")
+	if err != nil {
 		t.Fatal(err)
 	}
 	if gotAPIKey != "sb_secret_test" {
@@ -31,6 +40,19 @@ func TestSupabaseStoreSendsSecretKeyOnApikeyOnly(t *testing.T) {
 	}
 	if gotAuth != "" {
 		t.Fatalf("authorization should be empty, got %q", gotAuth)
+	}
+	if gotMethod != http.MethodPost || !strings.HasSuffix(gotPath, "/object/upload/sign/images/dot.png") {
+		t.Fatalf("sign request %s %s", gotMethod, gotPath)
+	}
+	if token != "abc" || signedURL != srv.URL+"/storage/v1/object/upload/sign/images/dot.png?token=abc" {
+		t.Fatalf("signedURL=%q token=%q", signedURL, token)
+	}
+
+	if err := store.Put(context.Background(), "dot.png", strings.NewReader("png"), "image/png", 3); err != nil {
+		t.Fatal(err)
+	}
+	if gotAuth != "" {
+		t.Fatalf("put authorization should be empty, got %q", gotAuth)
 	}
 
 	if err := store.Delete(context.Background(), "dot.png"); err != nil {

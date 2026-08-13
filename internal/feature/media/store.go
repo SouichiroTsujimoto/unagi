@@ -21,6 +21,13 @@ func NewLocalStore(root string) (*LocalStore, error) {
 	return &LocalStore{root: root}, nil
 }
 
+func (s *LocalStore) SignUpload(_ context.Context, key, _ string) (string, string, error) {
+	if !validObjectKey(key) {
+		return "", "", ErrInvalidObject
+	}
+	return "local://upload/" + key, "local", nil
+}
+
 func (s *LocalStore) Put(_ context.Context, key string, r io.Reader, _ string, _ int64) error {
 	if !validObjectKey(key) {
 		return ErrInvalidObject

@@ -1,7 +1,6 @@
 package media
 
 import (
-	"bytes"
 	"context"
 	"crypto/rand"
 	"crypto/sha256"
@@ -37,6 +36,7 @@ var allowedTypes = map[string]string{
 
 // ObjectStore persists opaque binary objects.
 type ObjectStore interface {
+	SignUpload(ctx context.Context, key, contentType string) (signedURL, token string, err error)
 	Put(ctx context.Context, key string, r io.Reader, contentType string, size int64) error
 	Open(ctx context.Context, key string) (io.ReadCloser, string, int64, error)
 	Delete(ctx context.Context, key string) error
@@ -54,13 +54,20 @@ type Media struct {
 }
 
 type Library struct {
-	db         *bun.DB
-	store      ObjectStore
-	publicBase string
+	db    *bun.DB
+	store ObjectStore
 }
 
-func New(db *bun.DB, store ObjectStore, publicBase string) *Library {
-	return &Library{db: db, store: store, publicBase: strings.TrimRight(strings.TrimSpace(publicBase), "/")}
+func New(db *bun.DB, store ObjectStore) *Library {
+	return &Library{db: db, store: store}
+}
+
+type SignResult struct {
+	ObjectKey   string
+	SignedURL   string
+	Token       string
+	ContentType string
+	MarkdownURL string
 }
 
 type UploadResult struct {
@@ -68,53 +75,78 @@ type UploadResult struct {
 	URL   string
 }
 
-// Upload validates, stores, and records an image.
-func (l *Library) Upload(ctx context.Context, filename string, r io.Reader, sizeHint int64) (UploadResult, error) {
-	if sizeHint > MaxUploadBytes {
-		return UploadResult{}, ErrTooLarge
+// BeginUpload validates hints, generates an object key, and returns a path-limited signed upload URL.
+func (l *Library) BeginUpload(ctx context.Context, filename, contentType string, sizeBytes int64) (SignResult, error) {
+	if sizeBytes > MaxUploadBytes {
+		return SignResult{}, ErrTooLarge
 	}
-	limited := io.LimitReader(r, MaxUploadBytes+1)
-	data, err := io.ReadAll(limited)
-	if err != nil {
-		return UploadResult{}, fmt.Errorf("read upload: %w", err)
-	}
-	if int64(len(data)) > MaxUploadBytes {
-		return UploadResult{}, ErrTooLarge
-	}
-	contentType := normalizeContentType(http.DetectContentType(data), filename)
-	ext, ok := allowedTypes[contentType]
+	ct := normalizeContentType(contentType, filename)
+	ext, ok := allowedTypes[ct]
 	if !ok {
-		return UploadResult{}, ErrInvalidType
+		return SignResult{}, ErrInvalidType
 	}
-	sum := sha256.Sum256(data)
-	hash := hex.EncodeToString(sum[:])
 	key, err := randomObjectKey(ext)
+	if err != nil {
+		return SignResult{}, err
+	}
+	signedURL, token, err := l.store.SignUpload(ctx, key, ct)
+	if err != nil {
+		return SignResult{}, fmt.Errorf("sign upload: %w", err)
+	}
+	return SignResult{
+		ObjectKey:   key,
+		SignedURL:   signedURL,
+		Token:       token,
+		ContentType: ct,
+		MarkdownURL: markdownURL(key),
+	}, nil
+}
+
+// CompleteUpload reads the uploaded object, validates it, and records a media row.
+// Invalid objects are deleted from storage.
+func (l *Library) CompleteUpload(ctx context.Context, key string) (UploadResult, error) {
+	key = strings.TrimPrefix(key, "/")
+	if !validObjectKey(key) {
+		return UploadResult{}, ErrInvalidObject
+	}
+	rc, storedType, _, err := l.store.Open(ctx, key)
 	if err != nil {
 		return UploadResult{}, err
 	}
-	if err := l.store.Put(ctx, key, bytes.NewReader(data), contentType, int64(len(data))); err != nil {
-		return UploadResult{}, fmt.Errorf("store object: %w", err)
+	data, err := io.ReadAll(io.LimitReader(rc, MaxUploadBytes+1))
+	_ = rc.Close()
+	if err != nil {
+		return UploadResult{}, fmt.Errorf("read object: %w", err)
 	}
-
+	if int64(len(data)) > MaxUploadBytes {
+		_ = l.store.Delete(ctx, key)
+		return UploadResult{}, ErrTooLarge
+	}
+	detected := normalizeContentType(http.DetectContentType(data), key)
+	if storedType != "" && detected == "application/octet-stream" {
+		detected = normalizeContentType(storedType, key)
+	}
+	if _, ok := allowedTypes[detected]; !ok {
+		_ = l.store.Delete(ctx, key)
+		return UploadResult{}, ErrInvalidType
+	}
+	sum := sha256.Sum256(data)
 	item := Media{
 		ObjectKey:   key,
-		ContentType: contentType,
+		ContentType: detected,
 		SizeBytes:   int64(len(data)),
-		SHA256:      hash,
+		SHA256:      hex.EncodeToString(sum[:]),
 		CreatedAt:   time.Now().UTC(),
 	}
 	if _, err := l.db.NewInsert().Model(&item).Exec(ctx); err != nil {
 		_ = l.store.Delete(ctx, key)
 		return UploadResult{}, fmt.Errorf("insert media: %w", err)
 	}
-	return UploadResult{Media: item, URL: l.publicURL(key)}, nil
+	return UploadResult{Media: item, URL: markdownURL(key)}, nil
 }
 
-func (l *Library) publicURL(key string) string {
-	if l.publicBase == "" {
-		return "/images/" + key
-	}
-	return l.publicBase + "/" + key
+func markdownURL(key string) string {
+	return "/images/" + key
 }
 
 // GetByKey loads media metadata.
