@@ -47,6 +47,9 @@ func (handler *Handler) Show(c echo.Context) error {
 		Active:      "home",
 		Wide:        true,
 		Preconnect:  handler.site.MediaOrigin,
+		Assets: layout.AssetArticleShare |
+			layout.AssetArticleLinkcards |
+			layout.AssetArticleEngagement,
 	}
 	c.Response().Header().Set(echo.HeaderContentType, echo.MIMETextHTMLCharsetUTF8)
 	if err := ShowPage(meta, post).Render(c.Request().Context(), c.Response()); err != nil {

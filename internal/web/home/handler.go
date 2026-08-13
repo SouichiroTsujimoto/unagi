@@ -40,6 +40,7 @@ func (handler *Handler) Show(c echo.Context) error {
 		OGType:      "website",
 		Active:      "home",
 		Preconnect:  handler.site.MediaOrigin,
+		Assets:      layout.AssetBrailleLab,
 	}
 	c.Response().Header().Set(echo.HeaderContentType, echo.MIMETextHTMLCharsetUTF8)
 	if err := Page(meta, handler.site, items).Render(c.Request().Context(), c.Response()); err != nil {

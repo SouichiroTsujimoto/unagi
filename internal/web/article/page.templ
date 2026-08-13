@@ -73,7 +73,7 @@ templ ShowPage(meta layout.PageMeta, post article.Article) {
 					<span class="article-end-line" aria-hidden="true"></span>
 				</div>
 				<section>
-					<is-land on:visible>
+					<is-land on:visible import="/static/islands/article-engagement.js">
 						<template data-island>
 							<article-engagement slug={ post.Slug }></article-engagement>
 						</template>

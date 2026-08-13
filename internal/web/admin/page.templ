@@ -5,19 +5,20 @@ import (
 	"github.com/SouichiroTsujimoto/unagi/internal/web/layout"
 )
 
-templ shell(site layout.Site, title string, active string) {
+templ shell(site layout.Site, title string, active string, assets layout.Assets) {
 	@layout.Document(layout.PageMeta{
 		Title:       site.TitleWithSite(title),
 		Description: "管理画面",
 		Active:      active,
 		Wide:        true,
+		Assets:      assets,
 	}) {
 		{ children... }
 	}
 }
 
 templ LoginPage(site layout.Site) {
-	@shell(site, "Login", "admin") {
+	@shell(site, "Login", "admin", 0) {
 		<main class="flex flex-col gap-8">
 			<header class="space-y-2">
 				<h1 class="text-xl font-semibold tracking-tight">Admin Login</h1>
@@ -31,7 +32,7 @@ templ LoginPage(site layout.Site) {
 }
 
 templ ForbiddenPage(site layout.Site) {
-	@shell(site, "Forbidden", "admin") {
+	@shell(site, "Forbidden", "admin", 0) {
 		<main class="flex flex-col gap-8">
 			<header class="space-y-2">
 				<h1 class="text-xl font-semibold tracking-tight">権限がありません</h1>
@@ -57,7 +58,7 @@ templ xSignIn(href string) {
 }
 
 templ IndexPage(site layout.Site, items []article.Article) {
-	@shell(site, "Articles", "admin") {
+	@shell(site, "Articles", "admin", 0) {
 		<main class="flex flex-col gap-8">
 			<header class="flex flex-wrap items-end justify-between gap-4">
 				<div class="space-y-1">
@@ -101,7 +102,7 @@ templ IndexPage(site layout.Site, items []article.Article) {
 }
 
 templ ManagePage(site layout.Site, item article.Article) {
-	@shell(site, item.Title, "admin") {
+	@shell(site, item.Title, "admin", layout.AssetAdminEngagement) {
 		<main class="flex flex-col gap-6">
 			<header class="flex flex-wrap items-end justify-between gap-4">
 				<div class="space-y-1">
@@ -131,7 +132,7 @@ templ ManagePage(site layout.Site, item article.Article) {
 						貼られた順の一覧です。選択して剥がすか、すべて削除できます。
 					</p>
 				</header>
-				<is-land on:visible>
+				<is-land on:visible import="/static/islands/admin-stickers.js">
 					<template data-island>
 						<admin-stickers article-id={ itoa(item.ID) }></admin-stickers>
 					</template>
@@ -144,7 +145,7 @@ templ ManagePage(site layout.Site, item article.Article) {
 						非表示・再表示・削除ができます。非表示にしたコメントは公開ページに出ません。
 					</p>
 				</header>
-				<is-land on:visible>
+				<is-land on:visible import="/static/islands/admin-comments.js">
 					<template data-island>
 						<admin-comments article-id={ itoa(item.ID) }></admin-comments>
 					</template>

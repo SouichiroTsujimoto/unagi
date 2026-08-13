@@ -5,6 +5,28 @@ import (
 	"strings"
 )
 
+type Assets uint8
+
+const (
+	AssetBrailleLab Assets = 1 << iota
+	AssetArticleShare
+	AssetArticleLinkcards
+	AssetArticleEngagement
+	AssetAdminEngagement
+)
+
+func (a Assets) Has(asset Assets) bool {
+	return a&asset != 0
+}
+
+func (a Assets) NeedsImportMap() bool {
+	return a.Has(AssetArticleEngagement | AssetAdminEngagement)
+}
+
+func (a Assets) NeedsIsLand() bool {
+	return a.Has(AssetArticleEngagement | AssetAdminEngagement)
+}
+
 // PageMeta holds document-level SEO and social metadata.
 type PageMeta struct {
 	Title       string
@@ -15,6 +37,7 @@ type PageMeta struct {
 	Active      string
 	Wide        bool
 	Preconnect  string // origin, e.g. https://xxxx.supabase.co
+	Assets      Assets
 }
 
 // Site holds shared site identity used when building PageMeta.

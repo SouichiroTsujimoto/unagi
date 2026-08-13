@@ -1,14 +1,7 @@
 import { html } from "htm/preact";
 import { useCallback, useEffect, useMemo, useState } from "preact/hooks";
 import register from "preact-custom-element";
-
-function formatWhen(iso) {
-  if (!iso) return "";
-  const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return String(iso);
-  const pad = (n) => String(n).padStart(2, "0");
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
-}
+import { api, formatWhen } from "./admin-common.js";
 
 function AdminComments(props) {
   const articleId = props.articleId || "";
@@ -17,31 +10,6 @@ function AdminComments(props) {
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
-
-  const api = useCallback(
-    async (path, method, body) => {
-      const res = await fetch(path, {
-        method,
-        headers: {
-          "Content-Type": "application/json",
-          Accept: "application/json",
-        },
-        body: body ? JSON.stringify(body) : undefined,
-      });
-      const text = await res.text();
-      let data = null;
-      try {
-        data = text ? JSON.parse(text) : null;
-      } catch {
-        data = { message: text };
-      }
-      if (!res.ok) {
-        throw new Error(data?.message || data?.error || text || res.statusText);
-      }
-      return data;
-    },
-    [],
-  );
 
   const load = useCallback(async () => {
     if (!articleId) return;
@@ -53,7 +21,7 @@ function AdminComments(props) {
     } catch (err) {
       setError(err.message || String(err));
     }
-  }, [api, articleId]);
+  }, [articleId]);
 
   useEffect(() => {
     void load();
