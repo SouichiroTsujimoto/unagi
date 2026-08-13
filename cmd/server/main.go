@@ -78,16 +78,16 @@ func main() {
 			Driver: *dbDriverFlag,
 			DSN:    *dbDSNFlag,
 		},
-		Version:            version,
-		Banner:             *banner,
-		Site:               site,
-		Auth:               authCfg,
-		MediaBackend:       mediaBackend,
-		MediaLocalDir:      mediaDir,
-		MediaPublicBase:    os.Getenv("UNIGO_MEDIA_PUBLIC_BASE"),
-		MediaBucket:        envOr("UNIGO_MEDIA_BUCKET", "images"),
-		SupabaseURL:        envOr("UNIGO_SUPABASE_URL", authCfg.SupabaseURL),
-		SupabaseServiceKey: os.Getenv("UNIGO_SUPABASE_SERVICE_ROLE_KEY"),
+		Version:           version,
+		Banner:            *banner,
+		Site:              site,
+		Auth:              authCfg,
+		MediaBackend:      mediaBackend,
+		MediaLocalDir:     mediaDir,
+		MediaPublicBase:   os.Getenv("UNIGO_MEDIA_PUBLIC_BASE"),
+		MediaBucket:       envOr("UNIGO_MEDIA_BUCKET", "images"),
+		SupabaseURL:       envOr("UNIGO_SUPABASE_URL", authCfg.SupabaseURL),
+		SupabaseSecretKey: os.Getenv("UNIGO_SUPABASE_SECRET_KEY"),
 	}); err != nil {
 		slog.Error("application stopped", "err", err)
 		os.Exit(1)
@@ -111,8 +111,7 @@ func authConfig(site layout.Site) featureauth.Config {
 	}
 	return featureauth.Config{
 		SupabaseURL:    os.Getenv("UNIGO_SUPABASE_URL"),
-		AnonKey:        os.Getenv("UNIGO_SUPABASE_ANON_KEY"),
-		JWTSecret:      os.Getenv("UNIGO_SUPABASE_JWT_SECRET"),
+		PublishableKey: os.Getenv("UNIGO_SUPABASE_PUBLISHABLE_KEY"),
 		AdminUserIDs:   splitCSV(os.Getenv("UNIGO_ADMIN_USER_IDS")),
 		AllowedOrigins: origins,
 		SiteBaseURL:    site.BaseURL,

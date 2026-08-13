@@ -62,7 +62,7 @@ func (h *Handler) userFromRequest(c echo.Context) (featureauth.User, error) {
 	if err != nil || cookie.Value == "" {
 		return featureauth.User{}, featureauth.ErrUnauthorized
 	}
-	return h.auth.ParseAccessToken(cookie.Value)
+	return h.auth.ParseAccessToken(c.Request().Context(), cookie.Value)
 }
 
 func wantsJSON(c echo.Context) bool {

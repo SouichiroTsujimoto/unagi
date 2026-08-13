@@ -139,5 +139,5 @@ func (h *Handler) SessionFromRequest(c echo.Context) (featureauth.User, error) {
 	if err != nil || strings.TrimSpace(cookie.Value) == "" {
 		return featureauth.User{}, featureauth.ErrUnauthorized
 	}
-	return h.auth.ParseAccessToken(cookie.Value)
+	return h.auth.ParseAccessToken(c.Request().Context(), cookie.Value)
 }

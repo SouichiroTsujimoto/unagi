@@ -10,7 +10,7 @@ alwaysApply: true
 ## 採用
 
 - 計算: distroless コンテナを Cloud Run(東京、min-instances=0)
-- TLS: Cloud Run のカスタムドメイン(マネージド証明書)。CertMagic はない
+- 入口 / TLS: Vercelの独自ドメインをExternal RewriteでCloud Runへ転送する。Vercel Function / Middleware、Cloud Run domain mapping、CertMagicは使わない
 - DB: Supabase Postgres。ローカルは `supabase start`。sqlite はない
 - 画像: Supabase Storage、公開読み、同梱 CDN。Go の `/images` プロキシはない
 - 認証: Supabase Auth。admin(passkey + UUID allowlist)と読者Xログインは `internal/feature/auth`

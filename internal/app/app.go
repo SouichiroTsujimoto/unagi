@@ -33,18 +33,18 @@ import (
 )
 
 type Config struct {
-	Address            string
-	DB                 db.Config
-	Version            string
-	Banner             string
-	Site               layout.Site
-	Auth               featureauth.Config
-	MediaBackend       string // local | supabase
-	MediaLocalDir      string
-	MediaPublicBase    string
-	MediaBucket        string
-	SupabaseURL        string
-	SupabaseServiceKey string
+	Address           string
+	DB                db.Config
+	Version           string
+	Banner            string
+	Site              layout.Site
+	Auth              featureauth.Config
+	MediaBackend      string // local | supabase
+	MediaLocalDir     string
+	MediaPublicBase   string
+	MediaBucket       string
+	SupabaseURL       string
+	SupabaseSecretKey string
 }
 
 func Run(config Config) error {
@@ -133,7 +133,7 @@ func openObjectStore(config Config) (media.ObjectStore, error) {
 		if bucket == "" {
 			bucket = "images"
 		}
-		return media.NewSupabaseStore(url, bucket, config.SupabaseServiceKey, nil)
+		return media.NewSupabaseStore(url, bucket, config.SupabaseSecretKey, nil)
 	default:
 		return nil, fmt.Errorf("unsupported media backend %q", backend)
 	}

@@ -3,6 +3,9 @@ package web_test
 import (
 	"bytes"
 	"context"
+	"crypto/ecdsa"
+	"crypto/elliptic"
+	"crypto/rand"
 	"encoding/json"
 	"io"
 	"log/slog"
@@ -37,8 +40,6 @@ import (
 	"github.com/golang-jwt/jwt/v5"
 )
 
-const testJWTSecret = "super-secret-jwt-token-with-at-least-32-characters-long"
-
 func newTestRouter(t *testing.T) (*echoRouter, *article.Articles, *engagement.Engagement, *featureauth.Auth) {
 	t.Helper()
 	database := db.OpenTest(t)
@@ -69,14 +70,20 @@ func newTestRouter(t *testing.T) (*echoRouter, *article.Articles, *engagement.En
 		t.Fatal(err)
 	}
 	library := media.New(database, store, "https://cdn.example/images")
+	priv, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
+	if err != nil {
+		t.Fatal(err)
+	}
 	auth, err := featureauth.New(featureauth.Config{
 		SupabaseURL:    "http://127.0.0.1:54321",
-		AnonKey:        "test-anon",
-		JWTSecret:      testJWTSecret,
+		PublishableKey: "sb_publishable_test",
 		AdminUserIDs:   []string{"11111111-1111-1111-1111-111111111111"},
 		AllowedOrigins: []string{"http://localhost:8080"},
 		SiteBaseURL:    "http://localhost:8080",
 		SessionTTL:     time.Hour,
+		Keyfunc: func(tok *jwt.Token) (any, error) {
+			return &priv.PublicKey, nil
+		},
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -100,11 +107,12 @@ func newTestRouter(t *testing.T) (*echoRouter, *article.Articles, *engagement.En
 		LinkCard:   weblinkcard.New(cards, log),
 		Auth:       webauth.New(auth, site, log),
 	}, static.FS(), islands.FS())
-	return &echoRouter{handler: router}, articles, eng, auth
+	return &echoRouter{handler: router, jwtKey: priv}, articles, eng, auth
 }
 
 type echoRouter struct {
 	handler http.Handler
+	jwtKey  *ecdsa.PrivateKey
 }
 
 func (r *echoRouter) ServeHTTP(w http.ResponseWriter, req *http.Request) {
@@ -230,7 +238,7 @@ func TestEngagementRoutes(t *testing.T) {
 		t.Fatalf("loopback origin status=%d body=%s", rec.Code, rec.Body.String())
 	}
 
-	raw := signReaderJWT(t, "22222222-2222-2222-2222-222222222222", "wuhu", "wuhu", "https://example.com/a.png")
+	raw := signReaderJWT(t, router.jwtKey, "22222222-2222-2222-2222-222222222222", "wuhu", "wuhu", "https://example.com/a.png")
 	cookie := featureauth.CookieName + "=" + raw
 
 	req = httptest.NewRequest(http.MethodGet, "/api/articles/hello-unagi/engagement", nil)
@@ -332,7 +340,7 @@ func TestXAuthRoutes(t *testing.T) {
 	}
 }
 
-func signReaderJWT(t *testing.T, sub, username, display, avatar string) string {
+func signReaderJWT(t *testing.T, key *ecdsa.PrivateKey, sub, username, display, avatar string) string {
 	t.Helper()
 	claims := jwt.MapClaims{
 		"sub":  sub,
@@ -346,8 +354,8 @@ func signReaderJWT(t *testing.T, sub, username, display, avatar string) string {
 		"exp": time.Now().Add(time.Hour).Unix(),
 		"iat": time.Now().Unix(),
 	}
-	tok := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
-	s, err := tok.SignedString([]byte(testJWTSecret))
+	tok := jwt.NewWithClaims(jwt.SigningMethodES256, claims)
+	s, err := tok.SignedString(key)
 	if err != nil {
 		t.Fatal(err)
 	}

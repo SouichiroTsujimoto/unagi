@@ -1,5 +1,5 @@
-# Keep the build context small: the image only needs Go sources plus the
-# embedded assets (static/, articles/). Schema is not in the image.
+# Keep the build context small: the image only needs Go sources, embedded
+# assets (static/, articles/), and the migrations embedded by supabase/embed.go.
 .git
 .jj
 .github
@@ -10,7 +10,10 @@ data
 tools
 node_modules
 deploy
-supabase
+supabase/*
+!supabase/embed.go
+!supabase/migrations/
+!supabase/migrations/*.sql
 .env
 .env.*
 *.db

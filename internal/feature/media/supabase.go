@@ -9,31 +9,37 @@ import (
 	"strings"
 )
 
-// SupabaseStore stores objects in a public Supabase Storage bucket via the service role key.
+// SupabaseStore stores objects in a public Supabase Storage bucket via a secret API key.
 type SupabaseStore struct {
-	baseURL        string
-	bucket         string
-	serviceRoleKey string
-	client         *http.Client
+	baseURL   string
+	bucket    string
+	secretKey string
+	client    *http.Client
 }
 
 // NewSupabaseStore builds a store. baseURL is the Supabase project URL (e.g. http://127.0.0.1:54321).
-func NewSupabaseStore(baseURL, bucket, serviceRoleKey string, client *http.Client) (*SupabaseStore, error) {
+func NewSupabaseStore(baseURL, bucket, secretKey string, client *http.Client) (*SupabaseStore, error) {
 	baseURL = strings.TrimRight(strings.TrimSpace(baseURL), "/")
 	bucket = strings.TrimSpace(bucket)
-	serviceRoleKey = strings.TrimSpace(serviceRoleKey)
-	if baseURL == "" || bucket == "" || serviceRoleKey == "" {
-		return nil, fmt.Errorf("supabase storage url, bucket, and service role key are required")
+	secretKey = strings.TrimSpace(secretKey)
+	if baseURL == "" || bucket == "" || secretKey == "" {
+		return nil, fmt.Errorf("supabase storage url, bucket, and secret key are required")
 	}
 	if client == nil {
 		client = http.DefaultClient
 	}
 	return &SupabaseStore{
-		baseURL:        baseURL,
-		bucket:         bucket,
-		serviceRoleKey: serviceRoleKey,
-		client:         client,
+		baseURL:   baseURL,
+		bucket:    bucket,
+		secretKey: secretKey,
+		client:    client,
 	}, nil
+}
+
+func (s *SupabaseStore) authorize(req *http.Request) {
+	// Secret keys are not JWTs. Send them on apikey only.
+	// https://supabase.com/docs/guides/getting-started/migrating-to-new-api-keys
+	req.Header.Set("apikey", s.secretKey)
 }
 
 func (s *SupabaseStore) Put(ctx context.Context, key string, r io.Reader, contentType string, size int64) error {
@@ -52,8 +58,7 @@ func (s *SupabaseStore) Put(ctx context.Context, key string, r io.Reader, conten
 	if err != nil {
 		return err
 	}
-	req.Header.Set("Authorization", "Bearer "+s.serviceRoleKey)
-	req.Header.Set("apikey", s.serviceRoleKey)
+	s.authorize(req)
 	req.Header.Set("Content-Type", contentType)
 	req.Header.Set("x-upsert", "true")
 	res, err := s.client.Do(req)
@@ -101,8 +106,7 @@ func (s *SupabaseStore) Delete(ctx context.Context, key string) error {
 	if err != nil {
 		return err
 	}
-	req.Header.Set("Authorization", "Bearer "+s.serviceRoleKey)
-	req.Header.Set("apikey", s.serviceRoleKey)
+	s.authorize(req)
 	res, err := s.client.Do(req)
 	if err != nil {
 		return err

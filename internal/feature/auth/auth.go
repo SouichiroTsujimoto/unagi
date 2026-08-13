@@ -13,7 +13,10 @@ import (
 	"net/http"
 	"net/url"
 	"strings"
+	"sync"
 	"time"
+
+	"github.com/golang-jwt/jwt/v5"
 )
 
 const (
@@ -36,14 +39,16 @@ var (
 // Config wires Supabase Auth and admin allowlisting.
 type Config struct {
 	SupabaseURL    string
-	AnonKey        string
-	JWTSecret      string
+	PublishableKey string
 	AdminUserIDs   []string
 	AllowedOrigins []string
 	SiteBaseURL    string
 	SessionTTL     time.Duration // cookie MaxAge hint; JWT exp is authoritative
 	SecureCookies  bool
 	HTTPClient     *http.Client
+	// Keyfunc verifies access tokens. Nil means fetch JWKS from
+	// {SupabaseURL}/auth/v1/.well-known/jwks.json.
+	Keyfunc jwt.Keyfunc
 }
 
 // Auth is the application auth facade over GoTrue.
@@ -51,6 +56,9 @@ type Auth struct {
 	config     Config
 	adminSet   map[string]struct{}
 	httpClient *http.Client
+	jwksMu     sync.Mutex
+	jwksKeys   map[string]any
+	jwksAt     time.Time
 }
 
 // User is a verified Supabase Auth subject.
@@ -68,10 +76,9 @@ type User struct {
 // New validates config and returns Auth.
 func New(cfg Config) (*Auth, error) {
 	cfg.SupabaseURL = strings.TrimRight(strings.TrimSpace(cfg.SupabaseURL), "/")
-	cfg.AnonKey = strings.TrimSpace(cfg.AnonKey)
-	cfg.JWTSecret = strings.TrimSpace(cfg.JWTSecret)
-	if cfg.SupabaseURL == "" || cfg.AnonKey == "" || cfg.JWTSecret == "" {
-		return nil, fmt.Errorf("%w: supabase url, anon key, and jwt secret are required", ErrNotConfigured)
+	cfg.PublishableKey = strings.TrimSpace(cfg.PublishableKey)
+	if cfg.SupabaseURL == "" || cfg.PublishableKey == "" {
+		return nil, fmt.Errorf("%w: supabase url and publishable key are required", ErrNotConfigured)
 	}
 	if cfg.SessionTTL <= 0 {
 		cfg.SessionTTL = 7 * 24 * time.Hour
@@ -159,13 +166,15 @@ func isLoopback(host string) bool {
 	return host == "localhost" || host == "127.0.0.1" || host == "::1"
 }
 
-// ParseAccessToken verifies a Supabase access token JWT.
-func (a *Auth) ParseAccessToken(raw string) (User, error) {
+// ParseAccessToken verifies a Supabase access token against the project's JWKS.
+func (a *Auth) ParseAccessToken(ctx context.Context, raw string) (User, error) {
 	raw = strings.TrimSpace(raw)
 	if raw == "" {
 		return User{}, ErrUnauthorized
 	}
-	claims, err := parseJWT(raw, a.config.JWTSecret)
+	claims, err := parseJWT(raw, func(t *jwt.Token) (any, error) {
+		return a.keyForToken(ctx, t)
+	})
 	if err != nil {
 		return User{}, ErrUnauthorized
 	}
@@ -209,7 +218,7 @@ func (a *Auth) FinishPasskeyLogin(ctx context.Context, challengeID string, crede
 	if err != nil {
 		return User{}, err
 	}
-	user, err := a.ParseAccessToken(tok)
+	user, err := a.ParseAccessToken(ctx, tok)
 	if err != nil {
 		return User{}, err
 	}
@@ -261,7 +270,7 @@ func (a *Auth) FinishXOAuth(ctx context.Context, code, verifier string) (User, e
 	if err != nil {
 		return User{}, fmt.Errorf("%w: %v", ErrOAuthFailed, err)
 	}
-	return a.ParseAccessToken(tok)
+	return a.ParseAccessToken(ctx, tok)
 }
 
 func (a *Auth) gotrueJSON(ctx context.Context, method, path string, body []byte, bearer string) (json.RawMessage, error) {
@@ -273,8 +282,10 @@ func (a *Auth) gotrueJSON(ctx context.Context, method, path string, body []byte,
 	if err != nil {
 		return nil, err
 	}
-	req.Header.Set("apikey", a.config.AnonKey)
-	req.Header.Set("Authorization", "Bearer "+a.config.AnonKey)
+	// Publishable keys are not JWTs. Sending them as Authorization: Bearer
+	// makes the platform parse them as a JWT and reject with Invalid JWT.
+	// https://supabase.com/docs/guides/getting-started/migrating-to-new-api-keys
+	req.Header.Set("apikey", a.config.PublishableKey)
 	if bearer != "" {
 		req.Header.Set("Authorization", "Bearer "+bearer)
 	}

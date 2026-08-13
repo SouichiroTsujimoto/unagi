@@ -84,9 +84,9 @@ supabase-status:
 cloudrun-bootstrap:
     bash deploy/cloudrun/bootstrap.sh
 
-# Store a secret value in Secret Manager. Prompts; nothing is written to disk.
-cloudrun-secret name="":
-    bash deploy/cloudrun/secret.sh {{name}}
+# Push secret values from deploy/cloudrun/.env into Secret Manager.
+cloudrun-secret:
+    bash deploy/cloudrun/secret.sh
 
 # Manual release. Pushing to main normally does this via GitHub Actions.
 cloudrun-release:

@@ -38,8 +38,7 @@ func TestLayoutSiteEnvOverrides(t *testing.T) {
 func TestAuthConfigFromEnv(t *testing.T) {
 	t.Setenv("UNIGO_SITE_BASE_URL", "https://example.com")
 	t.Setenv("UNIGO_SUPABASE_URL", "https://abc.supabase.co")
-	t.Setenv("UNIGO_SUPABASE_ANON_KEY", "anon")
-	t.Setenv("UNIGO_SUPABASE_JWT_SECRET", "super-secret-jwt-token-with-at-least-32-characters-long")
+	t.Setenv("UNIGO_SUPABASE_PUBLISHABLE_KEY", "sb_publishable_test")
 	t.Setenv("UNIGO_ADMIN_USER_IDS", "11111111-1111-1111-1111-111111111111")
 	t.Setenv("UNIGO_SECURE_COOKIES", "")
 	t.Setenv("UNIGO_ALLOWED_ORIGINS", "")
@@ -48,6 +47,9 @@ func TestAuthConfigFromEnv(t *testing.T) {
 	cfg := authConfig(site)
 	if cfg.SupabaseURL != "https://abc.supabase.co" {
 		t.Fatalf("url=%q", cfg.SupabaseURL)
+	}
+	if cfg.PublishableKey != "sb_publishable_test" {
+		t.Fatalf("publishable=%q", cfg.PublishableKey)
 	}
 	if !cfg.SecureCookies {
 		t.Fatal("expected secure cookies from https base url")

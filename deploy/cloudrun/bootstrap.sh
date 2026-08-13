@@ -25,6 +25,7 @@ if ! "${gc[@]}" artifacts repositories describe "${ARTIFACT_REPO}" --location="$
     --repository-format=docker --location="${GCP_REGION}" \
     --description="unagi container images"
 fi
+gcloud auth configure-docker "${GCP_REGION}-docker.pkg.dev" --quiet
 
 step "service accounts"
 create_sa() {
@@ -44,7 +45,7 @@ for entry in "${secret_map[@]}"; do
   secret="${entry#*=}"
   if ! "${gc[@]}" secrets describe "${secret}" >/dev/null 2>&1; then
     "${gc[@]}" secrets create "${secret}" --replication-policy=automatic
-    echo "created ${secret} (no version yet: just cloudrun-secret ${secret})"
+    echo "created ${secret} (no version yet)"
   fi
   "${gc[@]}" secrets add-iam-policy-binding "${secret}" \
     --member="serviceAccount:${runtime_sa_email}" \
@@ -122,4 +123,4 @@ for entry in "${secret_map[@]}"; do
   set_var "${entry%%=*}_SECRET" "${entry#*=}"
 done
 
-printf '\ndone. next: just cloudrun-secret <name> for each empty secret\n'
+printf '\ndone. next: fill secret values in deploy/cloudrun/.env, then just cloudrun-secret\n'

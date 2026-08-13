@@ -2,7 +2,6 @@ package auth
 
 import (
 	"encoding/json"
-	"fmt"
 	"strings"
 	"time"
 
@@ -28,26 +27,6 @@ type userMeta struct {
 	AvatarURL         string `json:"avatar_url"`
 	Picture           string `json:"picture"`
 	Email             string `json:"email"`
-}
-
-func parseJWT(raw, secret string) (supabaseClaims, error) {
-	token, err := jwt.ParseWithClaims(raw, &supabaseClaims{}, func(t *jwt.Token) (any, error) {
-		if t.Method.Alg() != jwt.SigningMethodHS256.Alg() {
-			return nil, fmt.Errorf("unexpected alg %s", t.Method.Alg())
-		}
-		return []byte(secret), nil
-	}, jwt.WithLeeway(30*time.Second))
-	if err != nil {
-		return supabaseClaims{}, err
-	}
-	claims, ok := token.Claims.(*supabaseClaims)
-	if !ok || !token.Valid {
-		return supabaseClaims{}, fmt.Errorf("invalid token")
-	}
-	if strings.TrimSpace(claims.Subject) == "" {
-		return supabaseClaims{}, fmt.Errorf("missing sub")
-	}
-	return *claims, nil
 }
 
 func userFromClaims(claims supabaseClaims) User {

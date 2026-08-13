@@ -10,8 +10,9 @@
 
 ```sh
 cp .env.example .env
+supabase gen signing-key --algorithm ES256 > supabase/signing_keys.json
 supabase start
-# `supabase status -o env` のキーを .env に反映
+# `supabase start` の Publishable / Secret を .env に反映
 # Studioで管理者ユーザを作り、UUIDを UNIGO_ADMIN_USER_IDS へ
 just run
 ```
@@ -44,7 +45,7 @@ jj git push
 - schemaは`supabase/migrations/`。mainへのpushでGitHub integrationが適用する。アプリは起動時にmigrateしない
 - 管理: `/admin`(Supabase Auth passkey + `UNIGO_ADMIN_USER_IDS`)。読者ログインはX(Twitter) provider
 - 画像はSupabase Storage公開バケット。Markdownの`/images/...`は公開ベースURLへ書き換え。アプリは`GET /images`を持たない
-- TLSはCloud Runのマネージド証明書。アプリはHTTPのみ(`PORT`)
+- 独自ドメインとTLSはVercelで終端し、External RewriteでCloud Runへ転送。アプリはHTTPのみ(`PORT`)
 
 ## License
 

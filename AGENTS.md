@@ -3,7 +3,7 @@
 このリポジトリは**unagi**(個人用のミニマルな技術ブログ)である。[unigo-template](https://github.com/SouichiroTsujimoto/unigo-template)から作成し、同じワンバイナリ構成(Go、Echo、templ、is-land、Preact/htm、Tailwind CSS、daisyUI、lipgloss、tint、huh)を引き継ぐ。DB / Auth / StorageはSupabase、本番はCloud Run(distroless)とする。
 
 - ワンバイナリ: 別ランタイム不要(Cloud Runはdistroless静的バイナリ)
-- デプロイ: Cloud Run(東京、min-instances=0)。mainへのpushでCIがテスト後にデプロイし、Supabase GitHub integration(Deploy to production)が`supabase/migrations/`を適用する。手順は`deploy/cloudrun/`
+- デプロイ: Vercelで独自ドメインとTLSを終端し、External RewriteでCloud Run(東京、min-instances=0)へ転送する。mainへのpushでCIがテスト後にCloud Runへデプロイし、Supabase GitHub integration(Deploy to production)が`supabase/migrations/`を適用する。手順は`deploy/cloudrun/`
 - 開発者体験: `supabase start` + `just run`でホットリロード・TUI対応。`cmd/dev`は`.env`を読む(`bin/server`は読まない)
 - Islands Architecture: templ + `<is-land>` + Preact/htm (ビルド時・実行時 Node.js不要)。supabase-jsはislandに入れない
 - 公開記事の正本はPostgres。埋め込み`articles/`は空DB時のseed用
