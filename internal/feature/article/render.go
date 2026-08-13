@@ -50,7 +50,7 @@ var markdown = goldmark.New(
 
 var policy = func() *bluemonday.Policy {
 	p := bluemonday.UGCPolicy()
-	p.AllowAttrs("class").OnElements("div", "aside", "pre", "code", "span", "details", "figure", "figcaption", "a")
+	p.AllowAttrs("class").OnElements("div", "aside", "pre", "code", "span", "details", "figure", "figcaption", "a", "img", "iframe")
 	p.AllowAttrs("open").OnElements("details")
 	p.AllowElements("aside", "details", "summary", "figure", "figcaption", "iframe", "noscript")
 	p.AllowAttrs("id").OnElements("h1", "h2", "h3", "h4", "h5", "h6", "li", "sup", "a")

@@ -66,9 +66,13 @@ function enhanceMedia(root = document) {
   });
 }
 
+let hydrateStarted = false;
+
 async function hydratePendingCards(root = document) {
   const pending = [...root.querySelectorAll("figure[data-linkcard-url]")];
   if (pending.length === 0) return;
+  if (hydrateStarted) return;
+  hydrateStarted = true;
 
   const urls = [...new Set(pending.map((el) => el.getAttribute("data-linkcard-url")).filter(Boolean))];
   const byURL = new Map();
@@ -120,3 +124,7 @@ class ArticleLinkcards extends HTMLElement {
 if (!customElements.get("article-linkcards")) {
   customElements.define("article-linkcards", ArticleLinkcards);
 }
+
+// Module scripts in <head> are deferred; the article DOM is already parsed.
+enhanceMedia(document);
+void hydratePendingCards(document);

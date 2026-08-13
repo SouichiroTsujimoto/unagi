@@ -210,8 +210,8 @@ func TestRenderLinkCards(t *testing.T) {
 	t.Parallel()
 
 	md := "see\n\nhttps://www.youtube.com/watch?v=dQw4w9WgXcQ\n\n@[card](https://example.com/)\n"
-	exp := stubExpander{html: `<figure class="article-embed article-embed-youtube"><div class="article-embed-frame"><iframe title="YouTube video" src="https://www.youtube-nocookie.com/embed/dQw4w9WgXcQ" loading="lazy" referrerpolicy="strict-origin-when-cross-origin" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen></iframe></div></figure>
-<figure class="article-linkcard"><a class="article-linkcard-link" href="https://example.com/" rel="noopener noreferrer" target="_blank"><span class="article-linkcard-body"><span class="article-linkcard-title">Example</span><span class="article-linkcard-meta">example.com</span></span></a></figure>
+	exp := stubExpander{html: `<figure class="article-embed article-embed-youtube"><div class="article-embed-frame"><span class="article-embed-frame-skel skeleton" aria-hidden="true"></span><iframe class="article-embed-frame-media" title="YouTube video" src="https://www.youtube-nocookie.com/embed/dQw4w9WgXcQ" loading="lazy" referrerpolicy="strict-origin-when-cross-origin" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen></iframe></div></figure>
+<figure class="article-linkcard"><a class="article-linkcard-link" href="https://example.com/" rel="noopener noreferrer" target="_blank"><span class="article-linkcard-thumb"><span class="article-linkcard-thumb-skel skeleton" aria-hidden="true"></span><img class="article-linkcard-thumb-img" src="https://example.com/og.png" alt="" loading="lazy" decoding="async"/></span><span class="article-linkcard-body"><span class="article-linkcard-title">Example</span><span class="article-linkcard-meta">example.com</span></span></a></figure>
 `}
 	a := &Articles{embeds: exp}
 	html, err := a.RenderHTML(context.Background(), md)
@@ -220,8 +220,10 @@ func TestRenderLinkCards(t *testing.T) {
 	}
 	for _, want := range []string{
 		`article-embed-youtube`,
+		`class="article-embed-frame-media"`,
 		`youtube-nocookie.com/embed/dQw4w9WgXcQ`,
 		`article-linkcard`,
+		`class="article-linkcard-thumb-img"`,
 		`iframe`,
 	} {
 		if !strings.Contains(html, want) {
