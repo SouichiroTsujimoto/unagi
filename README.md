@@ -12,9 +12,8 @@
 cp .env.example .env
 supabase gen signing-key --algorithm ES256 > supabase/signing_keys.json
 supabase start
-# `supabase start` の Publishable / Secret を .env に反映
-# /admin からXログインし、DashboardのAuthentication Usersで自分のUUIDを UNIGO_ADMIN_USER_IDS へ
 just run
+# /admin は初回Xログイン後、UsersのUUIDを UNIGO_ADMIN_USER_IDS へ
 ```
 
 `http://localhost:8080`。`just run`は`.env`を読む(`bin/server`は読まない)。秘密は`.unigo.toml`に置かない。
