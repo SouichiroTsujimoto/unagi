@@ -253,7 +253,7 @@ func Document(meta PageMeta) templ.Component {
 				return templ_7745c5c3_Err
 			}
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 24, "<link rel=\"alternate\" type=\"application/rss+xml\" title=\"RSS\" href=\"/feed.xml\"><link rel=\"icon\" href=\"/static/wuhu1sland-2.png\" type=\"image/png\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 24, "<link rel=\"alternate\" type=\"application/rss+xml\" title=\"RSS\" href=\"/feed.xml\"><link rel=\"icon\" href=\"/static/wuhu1sland-2.webp\" type=\"image/webp\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

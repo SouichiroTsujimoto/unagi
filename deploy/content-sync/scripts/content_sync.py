@@ -16,8 +16,8 @@ from pathlib import Path
 
 ALLOWED_EXT = {".png": "image/png", ".jpg": "image/jpeg", ".jpeg": "image/jpeg", ".webp": "image/webp", ".gif": "image/gif"}
 MAX_BYTES = 5 * 1024 * 1024
-# 1 minute: same-URL replace shows up quickly; a single reading session still hits cache.
-CACHE_CONTROL = "public, max-age=60"
+# Article images are content-addressed; 1 day is enough for return visits.
+CACHE_CONTROL = "public, max-age=86400"
 
 
 def sha256_file(path: Path) -> tuple[str, int]:

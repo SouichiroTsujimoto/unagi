@@ -46,7 +46,7 @@ func Page(meta layout.PageMeta, site layout.Site, articles []article.Article) te
 				}()
 			}
 			ctx = templ.InitializeContext(ctx)
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 1, "<main class=\"flex flex-col gap-12\"><header class=\"space-y-4\"><div class=\"flex items-center gap-3\"><img src=\"/static/wuhu1sland-1.png\" alt=\"\" width=\"64\" height=\"64\" class=\"h-12 w-12 rounded-xl object-cover\" decoding=\"async\"><div class=\"space-y-0\"><h1 class=\"text-lg tracking-tight\">Hello from <a href=\"/about\" class=\"link link-hover text-base-content\" rel=\"noopener noreferrer\">wuhu1sland</a></h1><p class=\"text-base-content/55 text-[15px] leading-relaxed\">wuhu1slandの技術ノート</p></div></div></header><section class=\"space-y-6\" aria-labelledby=\"posts-title\"><h2 id=\"posts-title\" class=\"text-base font-semibold tracking-tight\">Posts</h2>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 1, "<main class=\"flex flex-col gap-12\"><header class=\"space-y-4\"><div class=\"flex items-center gap-3\"><img src=\"/static/wuhu1sland-1.webp\" alt=\"\" width=\"64\" height=\"64\" class=\"h-12 w-12 rounded-xl object-cover\" decoding=\"async\"><div class=\"space-y-0\"><h1 class=\"text-lg tracking-tight\">Hello from <a href=\"/about\" class=\"link link-hover text-base-content\" rel=\"noopener noreferrer\">wuhu1sland</a></h1><p class=\"text-base-content/55 text-[15px] leading-relaxed\">wuhu1slandの技術ノート</p></div></div></header><section class=\"space-y-6\" aria-labelledby=\"posts-title\"><h2 id=\"posts-title\" class=\"text-base font-semibold tracking-tight\">Posts</h2>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}

@@ -21,7 +21,7 @@ func (handler *Handler) Show(c echo.Context) error {
 		Title:       handler.site.TitleWithSite("Me"),
 		Description: handler.site.Description,
 		Canonical:   handler.site.AbsoluteURL("/about"),
-		OGImage:     handler.site.AbsoluteURL("/static/wuhu1sland-2.png"),
+		OGImage:     handler.site.AbsoluteURL("/static/wuhu1sland-2.webp"),
 		OGType:      "website",
 		Active:      "about",
 	}

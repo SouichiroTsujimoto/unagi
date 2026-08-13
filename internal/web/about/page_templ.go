@@ -43,7 +43,7 @@ func Page(meta layout.PageMeta, site layout.Site) templ.Component {
 				}()
 			}
 			ctx = templ.InitializeContext(ctx)
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 1, "<main class=\"about-page flex flex-col gap-10\"><header class=\"about-header space-y-5\"><img src=\"/static/wuhu1sland-2.png\" alt=\"")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 1, "<main class=\"about-page flex flex-col gap-10\"><header class=\"about-header space-y-5\"><img src=\"/static/wuhu1sland-2.webp\" alt=\"")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}

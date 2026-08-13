@@ -36,8 +36,8 @@ func New(h Handlers, staticFiles, islandFiles fs.FS) *echo.Echo {
 	router.HidePort = true
 	router.Use(requestLog())
 
-	router.GET("/static/islands/*", echo.StaticDirectoryHandler(islandFiles, false))
-	router.GET("/static/*", echo.StaticDirectoryHandler(staticFiles, false))
+	router.GET("/static/islands/*", staticHandler(islandFiles))
+	router.GET("/static/*", staticHandler(staticFiles))
 	router.GET("/healthz", func(c echo.Context) error {
 		return c.NoContent(http.StatusOK)
 	})

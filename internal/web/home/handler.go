@@ -36,7 +36,7 @@ func (handler *Handler) Show(c echo.Context) error {
 		Title:       handler.site.TitleWithSite("Posts"),
 		Description: handler.site.Description,
 		Canonical:   handler.site.AbsoluteURL("/"),
-		OGImage:     handler.site.AbsoluteURL("/static/wuhu1sland-1.png"),
+		OGImage:     handler.site.AbsoluteURL("/static/wuhu1sland-1.webp"),
 		OGType:      "website",
 		Active:      "home",
 		Preconnect:  handler.site.MediaOrigin,

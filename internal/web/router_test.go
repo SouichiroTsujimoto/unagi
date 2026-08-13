@@ -135,12 +135,12 @@ func TestBlogRoutes(t *testing.T) {
 		status   int
 		contains []string
 	}{
-		{name: "home", path: "/", status: 200, contains: []string{"<title>Posts · unagi</title>", "Hello from", "wuhu1sland", "unagiへようこそ", `aria-label="unagi トップへ"`}},
+		{name: "home", path: "/", status: 200, contains: []string{"<title>Posts · unagi</title>", "Hello from", "wuhu1sland", "unagiへようこそ", `aria-label="unagi トップへ"`, `/static/wuhu1sland-1.webp`}},
 		{name: "article", path: "/articles/hello-unagi", status: 200, contains: []string{"Hello", "<strong>unagi</strong>", "article-engagement", `slug="hello-unagi"`, "article-linkcards"}},
 		{name: "missing", path: "/articles/missing", status: 404},
 		{name: "tag", path: "/tags/Go", status: 200, contains: []string{"unagiへようこそ"}},
 		{name: "unknown tag", path: "/tags/unknown", status: 404},
-		{name: "about", path: "/about", status: 200, contains: []string{"<title>Me · unagi</title>", "me", "unagi", "学部3回生", "https://x.com/wuhu1sland", "https://github.com/SouichiroTsujimoto", `aria-label="unagi トップへ"`}},
+		{name: "about", path: "/about", status: 200, contains: []string{"<title>Me · unagi</title>", "me", "unagi", "学部3回生", "https://x.com/wuhu1sland", "https://github.com/SouichiroTsujimoto", `aria-label="unagi トップへ"`, `/static/wuhu1sland-2.webp`}},
 		{name: "feed", path: "/feed.xml", status: 200, contains: []string{"<rss", "hello-unagi"}},
 		{name: "sitemap", path: "/sitemap.xml", status: 200, contains: []string{"<urlset", "/articles/hello-unagi"}},
 		{name: "admin login", path: "/admin/login", status: 200, contains: []string{"Xでログイン", "/auth/x/login?return_to=/admin"}},
@@ -165,6 +165,30 @@ func TestBlogRoutes(t *testing.T) {
 				}
 			}
 		})
+	}
+}
+
+func TestStaticImageCacheControl(t *testing.T) {
+	router, _, _, _ := newTestRouter(t)
+
+	req := httptest.NewRequest(http.MethodGet, "/static/wuhu1sland-1.webp", nil)
+	rec := httptest.NewRecorder()
+	router.ServeHTTP(rec, req)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status=%d body=%s", rec.Code, rec.Body.String())
+	}
+	if got := rec.Header().Get("Cache-Control"); got != "public, max-age=604800" {
+		t.Fatalf("image cache-control=%q", got)
+	}
+
+	req = httptest.NewRequest(http.MethodGet, "/static/app.css", nil)
+	rec = httptest.NewRecorder()
+	router.ServeHTTP(rec, req)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("css status=%d", rec.Code)
+	}
+	if got := rec.Header().Get("Cache-Control"); strings.Contains(got, "max-age=604800") {
+		t.Fatalf("css should not use image cache, got %q", got)
 	}
 }
 

@@ -42,7 +42,7 @@ func (handler *Handler) Show(c echo.Context) error {
 		Title:       handler.site.TitleWithSite(post.Title),
 		Description: firstNonEmpty(post.Summary, handler.site.Description),
 		Canonical:   handler.site.AbsoluteURL(post.Path()),
-		OGImage:     handler.site.AbsoluteURL("/static/wuhu1sland-1.png"),
+		OGImage:     handler.site.AbsoluteURL("/static/wuhu1sland-1.webp"),
 		OGType:      "article",
 		Active:      "home",
 		Wide:        true,
@@ -81,7 +81,7 @@ func (handler *Handler) ListByTag(c echo.Context) error {
 		Title:       handler.site.TitleWithSite(tag),
 		Description: tag + "に関する記事一覧",
 		Canonical:   handler.site.AbsoluteURL(article.TopicPath(tag)),
-		OGImage:     handler.site.AbsoluteURL("/static/wuhu1sland-1.png"),
+		OGImage:     handler.site.AbsoluteURL("/static/wuhu1sland-1.webp"),
 		OGType:      "website",
 		Active:      "home",
 	}
