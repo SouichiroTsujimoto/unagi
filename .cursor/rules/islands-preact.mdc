@@ -20,11 +20,11 @@ alwaysApply: false
 
 1. `internal/web/islands/<name>.js`にPreact componentを書く(`htm/preact` + `preact/hooks`)。
 2. `preact-custom-element`でカスタム要素として`register`する。
-3. `boot.js`から明示的に`import`する(`init()`や自動探索はしない)。
-4. templ側は`<is-land>` + `<template data-island>`でマウントする。
+3. `layout.PageMeta.Assets`で必要なruntime/importmapだけを指定する。
+4. templ側は`<is-land import="/static/islands/<name>.js">` + `<template data-island>`でマウントする。
 
 ```templ
-<is-land on:visible>
+<is-land on:visible import="/static/islands/admin-comments.js">
 	<template data-island>
 		<admin-comments article-id="1"></admin-comments>
 	</template>

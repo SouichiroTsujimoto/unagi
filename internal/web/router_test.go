@@ -168,6 +168,58 @@ func TestBlogRoutes(t *testing.T) {
 	}
 }
 
+func TestPageSpecificIslandAssets(t *testing.T) {
+	router, _, _, _ := newTestRouter(t)
+	tests := []struct {
+		path     string
+		contains []string
+		excludes []string
+	}{
+		{
+			path:     "/",
+			contains: []string{"/static/islands/braille-lab.js"},
+			excludes: []string{"is-land.js", "article-share.js", "article-engagement.js", "admin-comments.js"},
+		},
+		{
+			path: "/articles/hello-unagi",
+			contains: []string{
+				"/static/vendor/is-land.js",
+				"/static/islands/article-share.js",
+				"/static/islands/article-linkcards.js",
+				`import="/static/islands/article-engagement.js"`,
+			},
+			excludes: []string{"braille-lab.js", "admin-comments.js", "admin-stickers.js"},
+		},
+		{
+			path:     "/about",
+			excludes: []string{"type=\"importmap\"", "/static/vendor/is-land.js", "/static/islands/"},
+		},
+		{
+			path:     "/tags/Go",
+			excludes: []string{"type=\"importmap\"", "/static/vendor/is-land.js", "/static/islands/"},
+		},
+	}
+	for _, tt := range tests {
+		req := httptest.NewRequest(http.MethodGet, tt.path, nil)
+		rec := httptest.NewRecorder()
+		router.ServeHTTP(rec, req)
+		if rec.Code != http.StatusOK {
+			t.Fatalf("%s status=%d body=%s", tt.path, rec.Code, rec.Body.String())
+		}
+		body := rec.Body.String()
+		for _, want := range tt.contains {
+			if !strings.Contains(body, want) {
+				t.Errorf("%s missing %q", tt.path, want)
+			}
+		}
+		for _, excluded := range tt.excludes {
+			if strings.Contains(body, excluded) {
+				t.Errorf("%s unexpectedly contains %q", tt.path, excluded)
+			}
+		}
+	}
+}
+
 func TestEngagementRoutes(t *testing.T) {
 	router, _, _, _ := newTestRouter(t)
 
@@ -412,7 +464,14 @@ func TestAdminEditorRoutesGoneAndPublishRemains(t *testing.T) {
 	req.Header.Set("Cookie", admin)
 	rec := httptest.NewRecorder()
 	router.ServeHTTP(rec, req)
-	if rec.Code != http.StatusOK || !strings.Contains(rec.Body.String(), "コメント") || strings.Contains(rec.Body.String(), "article-editor") {
+	body := rec.Body.String()
+	if rec.Code != http.StatusOK ||
+		!strings.Contains(body, "コメント") ||
+		!strings.Contains(body, "/static/vendor/is-land.js") ||
+		!strings.Contains(body, `import="/static/islands/admin-comments.js"`) ||
+		!strings.Contains(body, `import="/static/islands/admin-stickers.js"`) ||
+		strings.Contains(body, "article-editor") ||
+		strings.Contains(body, "article-engagement.js") {
 		t.Fatalf("manage page status=%d body=%s", rec.Code, rec.Body.String())
 	}
 

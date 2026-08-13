@@ -225,7 +225,7 @@ func ShowPage(meta layout.PageMeta, post article.Article) templ.Component {
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 19, "<article-linkcards class=\"contents\"></article-linkcards></div><div class=\"article-end\"><span class=\"article-end-line\" aria-hidden=\"true\"></span><p class=\"article-end-label\"><span class=\"article-end-mark\" aria-hidden=\"true\">⠿</span> <span>最後までお読みいただき、ありがとうございます</span> <span class=\"article-end-mark\" aria-hidden=\"true\">⠿</span></p><span class=\"article-end-line\" aria-hidden=\"true\"></span></div><section><is-land on:visible><template data-island><article-engagement slug=\"")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 19, "<article-linkcards class=\"contents\"></article-linkcards></div><div class=\"article-end\"><span class=\"article-end-line\" aria-hidden=\"true\"></span><p class=\"article-end-label\"><span class=\"article-end-mark\" aria-hidden=\"true\">⠿</span> <span>最後までお読みいただき、ありがとうございます</span> <span class=\"article-end-mark\" aria-hidden=\"true\">⠿</span></p><span class=\"article-end-line\" aria-hidden=\"true\"></span></div><section><is-land on:visible import=\"/static/islands/article-engagement.js\"><template data-island><article-engagement slug=\"")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}

@@ -120,8 +120,3 @@ class ArticleLinkcards extends HTMLElement {
 if (!customElements.get("article-linkcards")) {
   customElements.define("article-linkcards", ArticleLinkcards);
 }
-
-enhanceMedia(document);
-if (document.readyState === "loading") {
-  document.addEventListener("DOMContentLoaded", () => enhanceMedia(document), { once: true });
-}
