@@ -26,6 +26,8 @@ var (
 var (
 	frontmatterRE = regexp.MustCompile(`(?s)\A---\r?\n(.*?)\r?\n---\r?\n?(.*)`)
 	slugRE        = regexp.MustCompile(`^[a-z0-9](?:[a-z0-9-]{0,98}[a-z0-9])?$`)
+	imageLinkRE   = regexp.MustCompile(`!\[[^\]]*\]\([^)]+\)`)
+	linkRE        = regexp.MustCompile(`\[([^\]]+)\]\([^)]+\)`)
 )
 
 const (
@@ -239,8 +241,8 @@ func stripMD(body string) string {
 		if strings.HasPrefix(trim, ":::") {
 			continue
 		}
-		line = regexp.MustCompile(`!\[[^\]]*\]\([^)]+\)`).ReplaceAllString(line, "")
-		line = regexp.MustCompile(`\[([^\]]+)\]\([^)]+\)`).ReplaceAllString(line, "$1")
+		line = imageLinkRE.ReplaceAllString(line, "")
+		line = linkRE.ReplaceAllString(line, "$1")
 		line = strings.TrimLeftFunc(line, func(r rune) bool {
 			return r == '#' || r == '>' || r == '-' || r == '*' || r == '|' || unicode.IsSpace(r)
 		})

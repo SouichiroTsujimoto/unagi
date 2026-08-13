@@ -192,7 +192,7 @@ func (a *Auth) IsAdminUser(userID string) bool {
 }
 
 // StartXOAuth returns the Supabase authorize URL and PKCE verifier cookie value.
-func (a *Auth) StartXOAuth(returnTo string) (authorizeURL, verifier string, err error) {
+func (a *Auth) StartXOAuth() (authorizeURL, verifier string, err error) {
 	verifier, challenge, err := newPKCE()
 	if err != nil {
 		return "", "", err
@@ -203,10 +203,6 @@ func (a *Auth) StartXOAuth(returnTo string) (authorizeURL, verifier string, err 
 	q.Set("redirect_to", redirectTo)
 	q.Set("code_challenge", challenge)
 	q.Set("code_challenge_method", "S256")
-	if safe := SafeReturnTo(returnTo); safe != "" {
-		// Stash return path in redirect_to query for our callback to read via state cookie instead.
-		_ = safe
-	}
 	authorizeURL = a.config.SupabaseURL + "/auth/v1/authorize?" + q.Encode()
 	return authorizeURL, verifier, nil
 }

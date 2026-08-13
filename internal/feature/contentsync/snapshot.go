@@ -137,7 +137,8 @@ func validImagePath(p string) bool {
 	ext := strings.ToLower(path.Ext(p))
 	switch ext {
 	case ".png", ".jpg", ".jpeg", ".webp", ".gif":
-		return path.Base(p) == path.Base(p) && path.Base(p) != "." && path.Base(p) != "/"
+		base := path.Base(p)
+		return base != "." && base != "/"
 	default:
 		return false
 	}

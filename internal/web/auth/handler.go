@@ -27,7 +27,7 @@ func (h *Handler) Login(c echo.Context) error {
 	if returnTo == "" {
 		returnTo = c.QueryParam("returnTo")
 	}
-	authorizeURL, verifier, err := h.auth.StartXOAuth(returnTo)
+	authorizeURL, verifier, err := h.auth.StartXOAuth()
 	if err != nil {
 		h.log.Error("start x oauth", "err", err)
 		return echo.NewHTTPError(http.StatusInternalServerError, "oauth unavailable")
