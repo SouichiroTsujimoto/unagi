@@ -56,13 +56,14 @@ func (s *Sync) Secret() string {
 }
 
 type Result struct {
-	CommitSHA    string `json:"commit_sha"`
-	RunID        string `json:"run_id"`
-	Created      int    `json:"created"`
-	Updated      int    `json:"updated"`
-	Unchanged    int    `json:"unchanged"`
-	Deleted      int    `json:"deleted"`
-	ArticleCount int    `json:"article_count"`
+	CommitSHA     string `json:"commit_sha"`
+	RunID         string `json:"run_id"`
+	Created       int    `json:"created"`
+	Updated       int    `json:"updated"`
+	Unchanged     int    `json:"unchanged"`
+	Deleted       int    `json:"deleted"`
+	ArticleCount  int    `json:"article_count"`
+	ImagesDeleted int    `json:"images_deleted"`
 }
 
 type Upload struct {
@@ -180,8 +181,12 @@ func (s *Sync) Apply(ctx context.Context, snap Snapshot) (Result, error) {
 		if _, err := tx.ExecContext(ctx, "SELECT pg_advisory_xact_lock(?)", advisoryLockKey); err != nil {
 			return fmt.Errorf("advisory lock: %w", err)
 		}
-		if err := insertRun(ctx, tx, snap, len(items)); err != nil {
+		dup, err := runExists(ctx, tx, strings.TrimSpace(snap.RunID))
+		if err != nil {
 			return err
+		}
+		if dup {
+			return ErrDuplicateRun
 		}
 		counts, err := s.articles.ApplySnapshotTx(ctx, tx, items)
 		if err != nil {
@@ -211,6 +216,27 @@ func (s *Sync) Apply(ctx context.Context, snap Snapshot) (Result, error) {
 		}); err != nil {
 			return Result{}, err
 		}
+	}
+	keep := make([]string, 0, len(images))
+	for _, img := range images {
+		keep = append(keep, img.ObjectKey)
+	}
+	deleted, err := s.media.PruneExcept(ctx, keep)
+	if err != nil {
+		return result, fmt.Errorf("prune images: %w", err)
+	}
+	result.ImagesDeleted = deleted
+	err = s.db.RunInTx(ctx, nil, func(ctx context.Context, tx bun.Tx) error {
+		if _, err := tx.ExecContext(ctx, "SELECT pg_advisory_xact_lock(?)", advisoryLockKey); err != nil {
+			return fmt.Errorf("advisory lock: %w", err)
+		}
+		return insertRun(ctx, tx, snap, len(items))
+	})
+	if errors.Is(err, ErrDuplicateRun) {
+		return result, nil
+	}
+	if err != nil {
+		return result, err
 	}
 	return result, nil
 }
@@ -250,6 +276,10 @@ func insertRun(ctx context.Context, tx bun.Tx, snap Snapshot, articleCount int) 
 		return ErrDuplicateRun
 	}
 	return fmt.Errorf("insert sync run: %w", err)
+}
+
+func runExists(ctx context.Context, tx bun.Tx, runID string) (bool, error) {
+	return tx.NewSelect().Model((*dbSyncRun)(nil)).Where("run_id = ?", runID).Exists(ctx)
 }
 
 func isUniqueViolation(err error) bool {

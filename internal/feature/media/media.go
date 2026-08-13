@@ -31,6 +31,8 @@ var allowedTypes = map[string]string{
 type ObjectStore interface {
 	SignUpload(ctx context.Context, key, contentType string) (signedURL, token string, err error)
 	Exists(ctx context.Context, key string) (bool, error)
+	List(ctx context.Context) ([]string, error)
+	Delete(ctx context.Context, key string) error
 }
 
 type Media struct {
@@ -112,6 +114,51 @@ func (l *Library) Exists(ctx context.Context, key string) (bool, error) {
 		return false, ErrInvalidObject
 	}
 	return l.store.Exists(ctx, key)
+}
+
+// PruneExcept deletes stored objects and media rows whose keys are not in keep.
+func (l *Library) PruneExcept(ctx context.Context, keep []string) (int, error) {
+	if l == nil || l.store == nil {
+		return 0, nil
+	}
+	wanted := make(map[string]struct{}, len(keep))
+	keepKeys := make([]string, 0, len(keep))
+	for _, key := range keep {
+		key = strings.TrimPrefix(strings.TrimSpace(key), "/")
+		if !validObjectKey(key) {
+			return 0, ErrInvalidObject
+		}
+		if _, ok := wanted[key]; ok {
+			continue
+		}
+		wanted[key] = struct{}{}
+		keepKeys = append(keepKeys, key)
+	}
+	listed, err := l.store.List(ctx)
+	if err != nil {
+		return 0, fmt.Errorf("list media: %w", err)
+	}
+	deleted := 0
+	for _, key := range listed {
+		if _, ok := wanted[key]; ok {
+			continue
+		}
+		if err := l.store.Delete(ctx, key); err != nil {
+			return deleted, fmt.Errorf("delete media %s: %w", key, err)
+		}
+		deleted++
+	}
+	q := l.db.NewDelete().Model((*Media)(nil))
+	if len(keepKeys) == 0 {
+		if _, err := q.Where("TRUE").Exec(ctx); err != nil {
+			return deleted, fmt.Errorf("delete media rows: %w", err)
+		}
+		return deleted, nil
+	}
+	if _, err := q.Where("object_key NOT IN (?)", bun.In(keepKeys)).Exec(ctx); err != nil {
+		return deleted, fmt.Errorf("delete media rows: %w", err)
+	}
+	return deleted, nil
 }
 
 // Upsert records media metadata for a content-addressed object.

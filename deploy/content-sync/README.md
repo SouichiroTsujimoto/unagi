@@ -21,7 +21,7 @@ repository名はActions標準の`GITHUB_REPOSITORY`を使うため、追加varia
 - frontmatterは`title`、`emoji`、`type`、`topics`だけ。`published` / `published_at`は使わない。
 - slugは`articles/<slug>.md`のファイル名。公開後のrenameは禁止(renameすると旧slugは物理削除され、コメント・ステッカーは戻らない)。
 - Gitから消えた記事はDBから物理削除する。cascadeでコメントとステッカーも消える。
-- 画像は`images/`。同期時に`{sha256}.{ext}`へ変換してStorageへ置く。未参照画像のGCはしない。
+- 画像は`images/`。同期時に`{sha256}.{ext}`へ変換してStorageへ置く。`images/`から消えたファイルに対応するオブジェクトはStorageからも削除する。
 - 投稿日(`published_at`)はadminが初めて公開した時刻。本文同期・非公開・再公開では変えない。
 
 ## 復旧

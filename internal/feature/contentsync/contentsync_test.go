@@ -256,6 +256,51 @@ func TestApplyRejectsDuplicateAndMissingImage(t *testing.T) {
 	}
 }
 
+func TestApplyPrunesRemovedImages(t *testing.T) {
+	s, _, lib, store := testSync(t)
+	ctx := context.Background()
+	keepData, keepSum := pngSHA(t)
+	gone := bytes.Repeat([]byte("gone-image"), 32)
+	goneSum := sha256.Sum256(gone)
+	goneKey := hex.EncodeToString(goneSum[:]) + ".png"
+	keepKey := keepSum + ".png"
+	if err := store.Put(ctx, keepKey, bytes.NewReader(keepData), "image/png", int64(len(keepData))); err != nil {
+		t.Fatal(err)
+	}
+	if err := store.Put(ctx, goneKey, bytes.NewReader(gone), "image/png", int64(len(gone))); err != nil {
+		t.Fatal(err)
+	}
+	if err := lib.Upsert(ctx, media.Media{
+		ObjectKey: goneKey, ContentType: "image/png", SizeBytes: int64(len(gone)), SHA256: hex.EncodeToString(goneSum[:]),
+	}); err != nil {
+		t.Fatal(err)
+	}
+
+	out, err := s.Apply(ctx, snap("run-prune", "1234567", []ArticleIn{{
+		Path:     "articles/pic.md",
+		Markdown: md("Pic", "![](/images/dot.png)"),
+	}}, []ImageIn{{
+		Path:        "images/dot.png",
+		SHA256:      keepSum,
+		Size:        int64(len(keepData)),
+		ContentType: "image/png",
+	}}))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if out.ImagesDeleted != 1 {
+		t.Fatalf("images_deleted=%d want 1", out.ImagesDeleted)
+	}
+	ok, err := store.Exists(ctx, keepKey)
+	if err != nil || !ok {
+		t.Fatalf("kept image missing: exists=%v err=%v", ok, err)
+	}
+	ok, err = store.Exists(ctx, goneKey)
+	if err != nil || ok {
+		t.Fatalf("removed image still in store: exists=%v err=%v", ok, err)
+	}
+}
+
 func TestApplyRollsBackOnFailure(t *testing.T) {
 	s, articles, _, _ := testSync(t)
 	ctx := context.Background()

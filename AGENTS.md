@@ -8,7 +8,7 @@
 - Islands Architecture: templ + `<is-land>` + Preact/htm (ビルド時・実行時 Node.js不要)。supabase-jsはislandに入れない
 - 記事・画像の正本はGitHubリポジトリ`SouichiroTsujimoto/unagi-content`。Postgresは公開サイトのread model
 - 管理画面(`/admin`)はSupabase AuthのX OAuth + `UNIGO_ADMIN_USER_IDS`のallowlist。公開切替とコメント・ステッカー管理だけを行う。秘密は環境変数(`.unigo.toml`に平文で置かない)
-- 記事同期は`UNIGO_CONTENT_SYNC_SECRET`のHMACと固定repository`SouichiroTsujimoto/unagi-content`。Gitから消えた記事はDBから物理削除され、コメント・ステッカーもcascadeで消える
+- 記事同期は`UNIGO_CONTENT_SYNC_SECRET`のHMACと固定repository`SouichiroTsujimoto/unagi-content`。Gitから消えた記事はDBから物理削除され、コメント・ステッカーもcascadeで消える。`images/`から消えたファイルに対応するStorageオブジェクトも同期時に削除する
 
 小さなpackage境界を保つ。
 

@@ -21,6 +21,11 @@ func TestSupabaseStoreSendsSecretKeyOnApikeyOnly(t *testing.T) {
 		case r.Method == http.MethodPost && strings.Contains(r.URL.Path, "/object/upload/sign/"):
 			w.Header().Set("Content-Type", "application/json")
 			_, _ = w.Write([]byte(`{"url":"/object/upload/sign/images/dot.png?token=abc","token":"abc"}`))
+		case r.Method == http.MethodPost && strings.Contains(r.URL.Path, "/object/list/"):
+			w.Header().Set("Content-Type", "application/json")
+			_, _ = w.Write([]byte(`[{"name":"dot.png","id":"1"}]`))
+		case r.Method == http.MethodDelete:
+			w.WriteHeader(http.StatusOK)
 		default:
 			w.WriteHeader(http.StatusOK)
 		}
@@ -57,5 +62,19 @@ func TestSupabaseStoreSendsSecretKeyOnApikeyOnly(t *testing.T) {
 	}
 	if gotAuth != "" {
 		t.Fatalf("head authorization should be empty, got %q", gotAuth)
+	}
+
+	keys, err := store.List(context.Background())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(keys) != 1 || keys[0] != "dot.png" || gotMethod != http.MethodPost || !strings.HasSuffix(gotPath, "/object/list/images") {
+		t.Fatalf("list=%v request=%s %s", keys, gotMethod, gotPath)
+	}
+	if err := store.Delete(context.Background(), "dot.png"); err != nil {
+		t.Fatal(err)
+	}
+	if gotMethod != http.MethodDelete || !strings.HasSuffix(gotPath, "/object/images") {
+		t.Fatalf("delete request %s %s", gotMethod, gotPath)
 	}
 }

@@ -47,6 +47,27 @@ func TestContentAddressedUpload(t *testing.T) {
 	}); err != nil {
 		t.Fatal(err)
 	}
+	if err := store.Put(context.Background(), key, strings.NewReader("abc"), "image/png", 3); err != nil {
+		t.Fatal(err)
+	}
+
+	gone := strings.Repeat("b", 64) + ".png"
+	if err := store.Put(context.Background(), gone, strings.NewReader("x"), "image/png", 1); err != nil {
+		t.Fatal(err)
+	}
+	n, err := library.PruneExcept(context.Background(), []string{key})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if n != 1 {
+		t.Fatalf("pruned=%d", n)
+	}
+	if ok, _ := store.Exists(context.Background(), gone); ok {
+		t.Fatal("expected pruned object gone")
+	}
+	if ok, _ := store.Exists(context.Background(), key); !ok {
+		t.Fatal("kept object missing")
+	}
 }
 
 func TestContentAddressedUploadRejectsInvalidInput(t *testing.T) {

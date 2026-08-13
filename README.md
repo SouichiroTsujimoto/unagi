@@ -43,7 +43,7 @@ jj git push
 - 記事・画像の正本は[unagi-content](https://github.com/SouichiroTsujimoto/unagi-content)。Postgresは公開サイトのread model
 - schemaは`supabase/migrations/`。mainへのpushでGitHub integrationが適用する。アプリは起動時にmigrateしない
 - 管理: `/admin`(Supabase AuthのX OAuth + `UNIGO_ADMIN_USER_IDS`)で公開切替とコメント・ステッカー管理。本文編集はしない
-- 画像はSupabase Storage公開バケット。GitHub Actionsがcontent-addressed objectを直接PUTする。Markdownの`/images/...`は公開ベースURLへ書き換え。アプリは`GET /images`を持たない
+- 画像はSupabase Storage公開バケット。GitHub Actionsがcontent-addressed objectを直接PUTする。Markdownの`/images/...`は公開ベースURLへ書き換え。アプリは`GET /images`を持たない。`images/`から消えたファイルは同期時にStorageからも削除する
 - 独自ドメインとTLSはVercelで終端し、Go Framework PresetのHTTPサーバ(東京`hnd1`)がアプリを動かす。アプリはplatform提供の`PORT`を読む
 - 記事更新はVercel deployを起こさない。同期手順は[deploy/content-sync/README.md](deploy/content-sync/README.md)
 

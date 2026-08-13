@@ -55,3 +55,33 @@ func (s *LocalStore) Exists(_ context.Context, key string) (bool, error) {
 	}
 	return false, err
 }
+
+func (s *LocalStore) List(_ context.Context) ([]string, error) {
+	entries, err := os.ReadDir(s.root)
+	if err != nil {
+		return nil, err
+	}
+	out := make([]string, 0, len(entries))
+	for _, ent := range entries {
+		if ent.IsDir() {
+			continue
+		}
+		name := ent.Name()
+		if !validObjectKey(name) {
+			continue
+		}
+		out = append(out, name)
+	}
+	return out, nil
+}
+
+func (s *LocalStore) Delete(_ context.Context, key string) error {
+	if !validObjectKey(key) {
+		return ErrInvalidObject
+	}
+	err := os.Remove(filepath.Join(s.root, key))
+	if err == nil || os.IsNotExist(err) {
+		return nil
+	}
+	return err
+}

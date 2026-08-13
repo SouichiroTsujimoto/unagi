@@ -1,6 +1,7 @@
 package media
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -100,4 +101,85 @@ func (s *SupabaseStore) Exists(ctx context.Context, key string) (bool, error) {
 	default:
 		return false, fmt.Errorf("supabase storage head: status %d", res.StatusCode)
 	}
+}
+
+func (s *SupabaseStore) List(ctx context.Context) ([]string, error) {
+	const page = 100
+	var out []string
+	for offset := 0; offset < 10000; offset += page {
+		body, err := json.Marshal(map[string]any{
+			"prefix": "",
+			"limit":  page,
+			"offset": offset,
+		})
+		if err != nil {
+			return nil, err
+		}
+		url := fmt.Sprintf("%s/storage/v1/object/list/%s", s.baseURL, Bucket)
+		req, err := http.NewRequestWithContext(ctx, http.MethodPost, url, bytes.NewReader(body))
+		if err != nil {
+			return nil, err
+		}
+		s.authorize(req)
+		req.Header.Set("Content-Type", "application/json")
+		res, err := s.client.Do(req)
+		if err != nil {
+			return nil, err
+		}
+		payload, _ := io.ReadAll(io.LimitReader(res.Body, 1<<20))
+		res.Body.Close()
+		if res.StatusCode < 200 || res.StatusCode >= 300 {
+			return nil, fmt.Errorf("supabase storage list: status %d: %s", res.StatusCode, strings.TrimSpace(string(payload)))
+		}
+		var items []struct {
+			Name string `json:"name"`
+			ID   string `json:"id"`
+		}
+		if err := json.Unmarshal(payload, &items); err != nil {
+			return nil, fmt.Errorf("supabase storage list: decode: %w", err)
+		}
+		if len(items) == 0 {
+			break
+		}
+		for _, item := range items {
+			if item.ID == "" || !validObjectKey(item.Name) {
+				continue
+			}
+			out = append(out, item.Name)
+		}
+		if len(items) < page {
+			break
+		}
+	}
+	return out, nil
+}
+
+func (s *SupabaseStore) Delete(ctx context.Context, key string) error {
+	if !validObjectKey(key) {
+		return ErrInvalidObject
+	}
+	body, err := json.Marshal(map[string][]string{"prefixes": {key}})
+	if err != nil {
+		return err
+	}
+	url := fmt.Sprintf("%s/storage/v1/object/%s", s.baseURL, Bucket)
+	req, err := http.NewRequestWithContext(ctx, http.MethodDelete, url, bytes.NewReader(body))
+	if err != nil {
+		return err
+	}
+	s.authorize(req)
+	req.Header.Set("Content-Type", "application/json")
+	res, err := s.client.Do(req)
+	if err != nil {
+		return err
+	}
+	defer res.Body.Close()
+	payload, _ := io.ReadAll(io.LimitReader(res.Body, 8192))
+	if res.StatusCode == http.StatusNotFound {
+		return nil
+	}
+	if res.StatusCode < 200 || res.StatusCode >= 300 {
+		return fmt.Errorf("supabase storage delete: status %d: %s", res.StatusCode, strings.TrimSpace(string(payload)))
+	}
+	return nil
 }
