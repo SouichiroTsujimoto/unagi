@@ -20,6 +20,11 @@ import (
 
 const MaxUploadBytes = 5 << 20 // 5 MiB
 
+// PublicCacheControl is the Cache-Control value written on Storage uploads.
+// One day is long enough for a return visit, short enough that a same-URL
+// replace is visible by the next day. New bytes already get a new sha256 key.
+const PublicCacheControl = "public, max-age=86400"
+
 var (
 	ErrNotFound      = errors.New("media not found")
 	ErrTooLarge      = errors.New("file too large")

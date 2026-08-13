@@ -16,6 +16,8 @@ from pathlib import Path
 
 ALLOWED_EXT = {".png": "image/png", ".jpg": "image/jpeg", ".jpeg": "image/jpeg", ".webp": "image/webp", ".gif": "image/gif"}
 MAX_BYTES = 5 * 1024 * 1024
+# Keep in sync with media.PublicCacheControl (1 day, not immutable).
+CACHE_CONTROL = "public, max-age=86400"
 
 
 def sha256_file(path: Path) -> tuple[str, int]:
@@ -93,6 +95,7 @@ def put_upload(url: str, path: Path, content_type: str) -> None:
     data = path.read_bytes()
     req = urllib.request.Request(url, data=data, method="PUT")
     req.add_header("Content-Type", content_type)
+    req.add_header("Cache-Control", CACHE_CONTROL)
     req.add_header("x-upsert", "true")
     try:
         with urllib.request.urlopen(req, timeout=60) as res:

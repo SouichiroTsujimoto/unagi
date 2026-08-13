@@ -97,6 +97,7 @@ func (s *SupabaseStore) Put(ctx context.Context, key string, r io.Reader, conten
 	}
 	s.authorize(req)
 	req.Header.Set("Content-Type", contentType)
+	req.Header.Set("Cache-Control", PublicCacheControl)
 	req.Header.Set("x-upsert", "true")
 	res, err := s.client.Do(req)
 	if err != nil {

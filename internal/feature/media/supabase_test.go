@@ -11,12 +11,15 @@ import (
 )
 
 func TestSupabaseStoreSendsSecretKeyOnApikeyOnly(t *testing.T) {
-	var gotAPIKey, gotAuth, gotPath, gotMethod string
+	var gotAPIKey, gotAuth, gotPath, gotMethod, gotCacheControl string
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		gotAPIKey = r.Header.Get("apikey")
 		gotAuth = r.Header.Get("Authorization")
 		gotPath = r.URL.Path
 		gotMethod = r.Method
+		if r.Method == http.MethodPost && strings.Contains(r.URL.Path, "/object/") && !strings.Contains(r.URL.Path, "/upload/sign/") {
+			gotCacheControl = r.Header.Get("Cache-Control")
+		}
 		switch {
 		case r.Method == http.MethodPost && strings.Contains(r.URL.Path, "/object/upload/sign/"):
 			w.Header().Set("Content-Type", "application/json")
@@ -53,6 +56,9 @@ func TestSupabaseStoreSendsSecretKeyOnApikeyOnly(t *testing.T) {
 	}
 	if gotAuth != "" {
 		t.Fatalf("put authorization should be empty, got %q", gotAuth)
+	}
+	if gotCacheControl != media.PublicCacheControl {
+		t.Fatalf("put cache-control=%q", gotCacheControl)
 	}
 
 	if err := store.Delete(context.Background(), "dot.png"); err != nil {
