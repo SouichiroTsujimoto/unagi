@@ -66,6 +66,9 @@ type dbArticle struct {
 	SourceHash          string        `bun:"source_hash,nullzero"`
 	CreatedAt           time.Time     `bun:",notnull"`
 	UpdatedAt           time.Time     `bun:",notnull"`
+
+	Revision   *dbRevision `bun:"rel:belongs-to,join:published_revision_id=id"`
+	TopicNames []string    `bun:"topic_names,scanonly,array"`
 }
 
 type dbRevision struct {

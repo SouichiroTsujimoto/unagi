@@ -111,6 +111,16 @@ func TestCreatePublishAndList(t *testing.T) {
 	if len(list) != 1 || list[0].Slug != "hello" {
 		t.Fatalf("list=%v", list)
 	}
+	if len(list[0].Topics) != 1 || list[0].Topics[0] != "Go" {
+		t.Fatalf("list topics=%v", list[0].Topics)
+	}
+	got, err := store.Get(ctx, "hello", now)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got.Title != "Hello" || got.HTML == "" || len(got.Topics) != 1 || got.Topics[0] != "Go" {
+		t.Fatalf("get=%+v", got)
+	}
 	if _, err := store.Get(ctx, "draft", now); err != ErrNotFound {
 		t.Fatalf("draft err=%v", err)
 	}

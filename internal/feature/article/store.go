@@ -11,40 +11,51 @@ import (
 	"github.com/uptrace/bun"
 )
 
-// List returns publicly visible articles, newest first.
-func (a *Articles) List(ctx context.Context, now time.Time) ([]Article, error) {
+const topicNamesExpr = `COALESCE((
+	SELECT array_agg(t.name ORDER BY t.name)
+	FROM article_topics AS at
+	JOIN topics AS t ON t.id = at.topic_id
+	WHERE at.article_id = a.id
+), ARRAY[]::text[]) AS topic_names`
+
+func (a *Articles) selectPublic(model any, now time.Time) *bun.SelectQuery {
+	return a.db.NewSelect().
+		Model(model).
+		ColumnExpr("?TableColumns").
+		ColumnExpr(topicNamesExpr).
+		Relation("Revision").
+		Where("a.status = ?", StatusPublished).
+		Where("a.published_revision_id IS NOT NULL").
+		Where("(a.published_at IS NULL OR a.published_at <= ?)", now)
+}
+
+func publicNow(now time.Time) time.Time {
 	if now.IsZero() {
 		now = time.Now()
 	}
-	now = now.In(jst)
+	return now.In(jst)
+}
+
+// List returns publicly visible articles, newest first.
+func (a *Articles) List(ctx context.Context, now time.Time) ([]Article, error) {
+	now = publicNow(now)
 
 	var rows []dbArticle
-	if err := a.db.NewSelect().
-		Model(&rows).
-		Where("status = ?", StatusPublished).
-		Where("published_revision_id IS NOT NULL").
-		Where("(published_at IS NULL OR published_at <= ?)", now).
-		OrderExpr("published_at DESC NULLS LAST, id DESC").
+	if err := a.selectPublic(&rows, now).
+		OrderExpr("a.published_at DESC NULLS LAST, a.id DESC").
 		Scan(ctx); err != nil {
 		return nil, fmt.Errorf("list articles: %w", err)
 	}
-	return a.hydrateMany(ctx, rows, false)
+	return a.publicArticles(ctx, rows, false)
 }
 
 // Get returns a publicly visible article by slug.
 func (a *Articles) Get(ctx context.Context, slug string, now time.Time) (Article, error) {
-	if now.IsZero() {
-		now = time.Now()
-	}
-	now = now.In(jst)
+	now = publicNow(now)
 
 	var row dbArticle
-	err := a.db.NewSelect().
-		Model(&row).
-		Where("slug = ?", slug).
-		Where("status = ?", StatusPublished).
-		Where("published_revision_id IS NOT NULL").
-		Where("(published_at IS NULL OR published_at <= ?)", now).
+	err := a.selectPublic(&row, now).
+		Where("a.slug = ?", slug).
 		Scan(ctx)
 	if errors.Is(err, sql.ErrNoRows) {
 		return Article{}, ErrNotFound
@@ -52,31 +63,22 @@ func (a *Articles) Get(ctx context.Context, slug string, now time.Time) (Article
 	if err != nil {
 		return Article{}, fmt.Errorf("get article: %w", err)
 	}
-	return a.hydrateOne(ctx, row, true)
+	return a.publicArticle(ctx, row, true)
 }
 
 // ListByTopic returns publicly visible articles for a topic name.
 func (a *Articles) ListByTopic(ctx context.Context, topic string, now time.Time) ([]Article, error) {
-	if now.IsZero() {
-		now = time.Now()
-	}
-	now = now.In(jst)
+	now = publicNow(now)
 
 	var rows []dbArticle
-	err := a.db.NewSelect().
-		Model(&rows).
-		Join("JOIN article_topics at ON at.article_id = a.id").
-		Join("JOIN topics t ON t.id = at.topic_id").
-		Where("t.name = ?", topic).
-		Where("a.status = ?", StatusPublished).
-		Where("a.published_revision_id IS NOT NULL").
-		Where("(a.published_at IS NULL OR a.published_at <= ?)", now).
+	err := a.selectPublic(&rows, now).
+		Where("EXISTS (SELECT 1 FROM article_topics AS at JOIN topics AS t ON t.id = at.topic_id WHERE at.article_id = a.id AND t.name = ?)", topic).
 		OrderExpr("a.published_at DESC NULLS LAST, a.id DESC").
 		Scan(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("list by topic: %w", err)
 	}
-	return a.hydrateMany(ctx, rows, false)
+	return a.publicArticles(ctx, rows, false)
 }
 
 // Topics returns topic names that have at least one currently public article.
@@ -204,10 +206,10 @@ func replaceTopics(ctx context.Context, tx bun.Tx, articleID int64, topics []str
 	return nil
 }
 
-func (a *Articles) hydrateMany(ctx context.Context, rows []dbArticle, withHTML bool) ([]Article, error) {
+func (a *Articles) publicArticles(ctx context.Context, rows []dbArticle, withHTML bool) ([]Article, error) {
 	out := make([]Article, 0, len(rows))
 	for _, row := range rows {
-		item, err := a.hydrateOne(ctx, row, withHTML)
+		item, err := a.publicArticle(ctx, row, withHTML)
 		if err != nil {
 			return nil, err
 		}
@@ -216,17 +218,14 @@ func (a *Articles) hydrateMany(ctx context.Context, rows []dbArticle, withHTML b
 	return out, nil
 }
 
-func (a *Articles) hydrateOne(ctx context.Context, row dbArticle, withHTML bool) (Article, error) {
-	if !row.PublishedRevisionID.Valid {
+func (a *Articles) publicArticle(ctx context.Context, row dbArticle, withHTML bool) (Article, error) {
+	if row.Revision == nil {
 		return Article{}, ErrNotFound
 	}
-	var rev dbRevision
-	if err := a.db.NewSelect().Model(&rev).Where("id = ?", row.PublishedRevisionID.Int64).Scan(ctx); err != nil {
-		return Article{}, fmt.Errorf("load revision: %w", err)
-	}
-	topics, err := a.topicsFor(ctx, row.ID)
-	if err != nil {
-		return Article{}, err
+	rev := row.Revision
+	topics := row.TopicNames
+	if topics == nil {
+		topics = []string{}
 	}
 	item := Article{
 		ID:         row.ID,
