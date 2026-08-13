@@ -134,6 +134,29 @@ func (s *SupabaseStore) Open(ctx context.Context, key string) (io.ReadCloser, st
 	return res.Body, res.Header.Get("Content-Type"), res.ContentLength, nil
 }
 
+func (s *SupabaseStore) Exists(ctx context.Context, key string) (bool, error) {
+	if !validObjectKey(key) {
+		return false, ErrInvalidObject
+	}
+	url := fmt.Sprintf("%s/storage/v1/object/public/%s/%s", s.baseURL, s.bucket, key)
+	req, err := http.NewRequestWithContext(ctx, http.MethodHead, url, nil)
+	if err != nil {
+		return false, err
+	}
+	res, err := s.client.Do(req)
+	if err != nil {
+		return false, err
+	}
+	defer res.Body.Close()
+	if res.StatusCode == http.StatusNotFound {
+		return false, nil
+	}
+	if res.StatusCode >= 200 && res.StatusCode < 300 {
+		return true, nil
+	}
+	return false, fmt.Errorf("supabase storage head: status %d", res.StatusCode)
+}
+
 func (s *SupabaseStore) Delete(ctx context.Context, key string) error {
 	if !validObjectKey(key) {
 		return ErrInvalidObject

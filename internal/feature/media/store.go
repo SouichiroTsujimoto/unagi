@@ -62,6 +62,20 @@ func (s *LocalStore) Open(_ context.Context, key string) (io.ReadCloser, string,
 	return f, "", st.Size(), nil
 }
 
+func (s *LocalStore) Exists(_ context.Context, key string) (bool, error) {
+	if !validObjectKey(key) {
+		return false, ErrInvalidObject
+	}
+	_, err := os.Stat(filepath.Join(s.root, key))
+	if err == nil {
+		return true, nil
+	}
+	if os.IsNotExist(err) {
+		return false, nil
+	}
+	return false, err
+}
+
 func (s *LocalStore) Delete(_ context.Context, key string) error {
 	if !validObjectKey(key) {
 		return ErrInvalidObject

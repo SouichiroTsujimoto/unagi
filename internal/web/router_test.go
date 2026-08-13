@@ -20,6 +20,7 @@ import (
 	"github.com/SouichiroTsujimoto/unagi/internal/db"
 	"github.com/SouichiroTsujimoto/unagi/internal/feature/article"
 	featureauth "github.com/SouichiroTsujimoto/unagi/internal/feature/auth"
+	"github.com/SouichiroTsujimoto/unagi/internal/feature/contentsync"
 	"github.com/SouichiroTsujimoto/unagi/internal/feature/engagement"
 	"github.com/SouichiroTsujimoto/unagi/internal/feature/linkcard"
 	"github.com/SouichiroTsujimoto/unagi/internal/feature/media"
@@ -28,13 +29,13 @@ import (
 	"github.com/SouichiroTsujimoto/unagi/internal/web/admin"
 	webarticle "github.com/SouichiroTsujimoto/unagi/internal/web/article"
 	webauth "github.com/SouichiroTsujimoto/unagi/internal/web/auth"
+	webcontentsync "github.com/SouichiroTsujimoto/unagi/internal/web/contentsync"
 	webengagement "github.com/SouichiroTsujimoto/unagi/internal/web/engagement"
 	"github.com/SouichiroTsujimoto/unagi/internal/web/feed"
 	"github.com/SouichiroTsujimoto/unagi/internal/web/home"
 	"github.com/SouichiroTsujimoto/unagi/internal/web/islands"
 	"github.com/SouichiroTsujimoto/unagi/internal/web/layout"
 	weblinkcard "github.com/SouichiroTsujimoto/unagi/internal/web/linkcard"
-	webmedia "github.com/SouichiroTsujimoto/unagi/internal/web/media"
 	"github.com/SouichiroTsujimoto/unagi/internal/web/sitemap"
 	"github.com/SouichiroTsujimoto/unagi/static"
 	"github.com/golang-jwt/jwt/v5"
@@ -70,6 +71,13 @@ func newTestRouter(t *testing.T) (*echoRouter, *article.Articles, *engagement.En
 		t.Fatal(err)
 	}
 	library := media.New(database, store)
+	contentSync, err := contentsync.New(database, articles, library, contentsync.Config{
+		Secret:     "router-sync-secret",
+		Repository: "SouichiroTsujimoto/unagi-content",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
 	priv, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
 	if err != nil {
 		t.Fatal(err)
@@ -101,9 +109,9 @@ func newTestRouter(t *testing.T) (*echoRouter, *article.Articles, *engagement.En
 		About:      about.New(site, log),
 		Feed:       feed.New(articles, site, log),
 		Sitemap:    sitemap.New(articles, site, log),
-		Admin:      admin.New(auth, articles, eng, site, log),
-		Media:      webmedia.New(library, log),
-		Engagement: webengagement.New(eng, auth, site, log),
+		Admin:       admin.New(auth, articles, eng, site, log),
+		ContentSync: webcontentsync.New(contentSync, log),
+		Engagement:  webengagement.New(eng, auth, site, log),
 		LinkCard:   weblinkcard.New(cards, log),
 		Auth:       webauth.New(auth, site, log),
 	}, static.FS(), islands.FS())
@@ -364,57 +372,113 @@ func TestAdminAuthBoundaries(t *testing.T) {
 	req.Header.Set("Cookie", reader)
 	rec = httptest.NewRecorder()
 	router.ServeHTTP(rec, req)
-	if rec.Code != http.StatusForbidden {
+	if rec.Code != http.StatusNotFound {
 		t.Fatalf("reader media sign status=%d body=%s", rec.Code, rec.Body.String())
 	}
 }
 
-func TestAdminMediaSignRequiresAuth(t *testing.T) {
-	router, _, _, _ := newTestRouter(t)
+func TestAdminEditorRoutesGoneAndPublishRemains(t *testing.T) {
+	router, articles, _, _ := newTestRouter(t)
+	admin := featureauth.CookieName + "=" + signReaderJWT(t, router.jwtKey, "11111111-1111-1111-1111-111111111111", "souic", "souic", "")
 
-	req := httptest.NewRequest(http.MethodPost, "/api/admin/media/sign", strings.NewReader(`{"filename":"dot.png","contentType":"image/png","sizeBytes":12}`))
-	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("Accept", "application/json")
-	req.Header.Set("Origin", "http://localhost:8080")
+	gone := []struct {
+		method string
+		path   string
+	}{
+		{http.MethodGet, "/admin/articles/new"},
+		{http.MethodPost, "/api/admin/articles"},
+		{http.MethodPut, "/api/admin/articles/1"},
+		{http.MethodPost, "/api/admin/preview"},
+		{http.MethodPost, "/api/admin/media/sign"},
+		{http.MethodPost, "/api/admin/media/complete"},
+	}
+	for _, tt := range gone {
+		req := httptest.NewRequest(tt.method, tt.path, strings.NewReader(`{}`))
+		req.Header.Set("Content-Type", "application/json")
+		req.Header.Set("Accept", "application/json")
+		req.Header.Set("Origin", "http://localhost:8080")
+		req.Header.Set("Cookie", admin)
+		rec := httptest.NewRecorder()
+		router.ServeHTTP(rec, req)
+		if rec.Code != http.StatusNotFound {
+			t.Fatalf("%s %s status=%d body=%s", tt.method, tt.path, rec.Code, rec.Body.String())
+		}
+	}
+
+	req := httptest.NewRequest(http.MethodGet, "/admin/articles/1", nil)
+	req.Header.Set("Cookie", admin)
 	rec := httptest.NewRecorder()
 	router.ServeHTTP(rec, req)
-	if rec.Code != http.StatusUnauthorized {
-		t.Fatalf("anon status=%d body=%s", rec.Code, rec.Body.String())
+	if rec.Code != http.StatusOK || !strings.Contains(rec.Body.String(), "コメント") || strings.Contains(rec.Body.String(), "article-editor") {
+		t.Fatalf("manage page status=%d body=%s", rec.Code, rec.Body.String())
 	}
 
-	admin := signReaderJWT(t, router.jwtKey, "11111111-1111-1111-1111-111111111111", "souic", "souic", "")
-	cookie := featureauth.CookieName + "=" + admin
-
-	req = httptest.NewRequest(http.MethodPost, "/api/admin/media/sign", strings.NewReader(`{"filename":"dot.png","contentType":"image/png","sizeBytes":12}`))
-	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("Accept", "application/json")
-	req.Header.Set("Origin", "https://evil.example")
-	req.Header.Set("Cookie", cookie)
-	rec = httptest.NewRecorder()
-	router.ServeHTTP(rec, req)
-	if rec.Code != http.StatusForbidden {
-		t.Fatalf("evil origin status=%d body=%s", rec.Code, rec.Body.String())
-	}
-
-	req = httptest.NewRequest(http.MethodPost, "/api/admin/media/sign", strings.NewReader(`{"filename":"dot.png","contentType":"image/png","sizeBytes":12}`))
-	req.Header.Set("Content-Type", "application/json")
+	req = httptest.NewRequest(http.MethodPost, "/api/admin/articles/1/unpublish", nil)
 	req.Header.Set("Accept", "application/json")
 	req.Header.Set("Origin", "http://localhost:8080")
-	req.Header.Set("Cookie", cookie)
+	req.Header.Set("Cookie", admin)
 	rec = httptest.NewRecorder()
 	router.ServeHTTP(rec, req)
 	if rec.Code != http.StatusOK {
-		t.Fatalf("admin sign status=%d body=%s", rec.Code, rec.Body.String())
+		t.Fatalf("unpublish status=%d body=%s", rec.Code, rec.Body.String())
 	}
-	var signed struct {
-		ObjectKey string `json:"objectKey"`
-		URL       string `json:"url"`
+	req = httptest.NewRequest(http.MethodPost, "/api/admin/articles/1/publish", nil)
+	req.Header.Set("Accept", "application/json")
+	req.Header.Set("Origin", "http://localhost:8080")
+	req.Header.Set("Cookie", admin)
+	rec = httptest.NewRecorder()
+	router.ServeHTTP(rec, req)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("publish status=%d body=%s", rec.Code, rec.Body.String())
 	}
-	if err := json.Unmarshal(rec.Body.Bytes(), &signed); err != nil {
-		t.Fatal(err)
+
+	req = httptest.NewRequest(http.MethodGet, "/api/admin/articles/1/comments", nil)
+	req.Header.Set("Accept", "application/json")
+	req.Header.Set("Cookie", admin)
+	rec = httptest.NewRecorder()
+	router.ServeHTTP(rec, req)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("comments status=%d body=%s", rec.Code, rec.Body.String())
 	}
-	if signed.ObjectKey == "" || signed.URL != "/images/"+signed.ObjectKey {
-		t.Fatalf("signed=%+v", signed)
+	req = httptest.NewRequest(http.MethodGet, "/api/admin/articles/1/stickers", nil)
+	req.Header.Set("Accept", "application/json")
+	req.Header.Set("Cookie", admin)
+	rec = httptest.NewRecorder()
+	router.ServeHTTP(rec, req)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("stickers status=%d body=%s", rec.Code, rec.Body.String())
+	}
+
+	item, err := articles.GetByID(context.Background(), 1)
+	if err != nil || !item.Published {
+		t.Fatalf("article after toggle: %+v err=%v", item, err)
+	}
+}
+
+func TestContentSyncRequiresHMAC(t *testing.T) {
+	router, _, _, _ := newTestRouter(t)
+	body := []byte(`{"repository":"SouichiroTsujimoto/unagi-content","commit_sha":"aaaaaaa","run_id":"router-1","articles":[],"images":[]}`)
+
+	req := httptest.NewRequest(http.MethodPost, "/api/content-sync/dry-run", bytes.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+	rec := httptest.NewRecorder()
+	router.ServeHTTP(rec, req)
+	if rec.Code != http.StatusUnauthorized {
+		t.Fatalf("unsigned status=%d body=%s", rec.Code, rec.Body.String())
+	}
+
+	ts := strconv.FormatInt(time.Now().Unix(), 10)
+	sig := contentsync.Sign("router-sync-secret", http.MethodPost, "/api/content-sync/dry-run", ts, "router-1", "SouichiroTsujimoto/unagi-content", body)
+	req = httptest.NewRequest(http.MethodPost, "/api/content-sync/dry-run", bytes.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set(contentsync.HeaderTimestamp, ts)
+	req.Header.Set(contentsync.HeaderRunID, "router-1")
+	req.Header.Set(contentsync.HeaderRepository, "SouichiroTsujimoto/unagi-content")
+	req.Header.Set(contentsync.HeaderSignature, "sha256="+sig)
+	rec = httptest.NewRecorder()
+	router.ServeHTTP(rec, req)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("signed dry-run status=%d body=%s", rec.Code, rec.Body.String())
 	}
 }
 

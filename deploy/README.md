@@ -1,6 +1,6 @@
 # 本番(Vercel container)
 
-東京(`hnd1`)のVercel Functions上で、rootの`Dockerfile.vercel`が作るdistroless Goバイナリを動かす。独自ドメインとTLSも同じVercel projectが終端する。アプリはHTTPだけを話し`PORT`を読む。DB / Auth / StorageはSupabase、画像はStorageへbrowserが直接PUTし、公開URLから直接配信する。
+東京(`hnd1`)のVercel Functions上で、rootの`Dockerfile.vercel`が作るdistroless Goバイナリを動かす。独自ドメインとTLSも同じVercel projectが終端する。アプリはHTTPだけを話し`PORT`を読む。DB / Auth / StorageはSupabase。記事・画像の正本は[unagi-content](https://github.com/SouichiroTsujimoto/unagi-content)で、Actionsが署名付きAPI経由でPostgresとStorageへ全量同期する。
 
 Vercel FunctionやMiddleware、External Rewriteは使わない。
 
@@ -27,7 +27,7 @@ Vercel FunctionやMiddleware、External Rewriteは使わない。
 
 ローカルは`supabase start`が同じ`supabase/migrations/`を流す。既存のローカルDBをbun時代から引き継いでいる場合は`supabase db reset`。
 
-画像uploadはGoがsigned URLを発行し、browserがSupabase Storageへ直接PUTする。Storage CORSでサイトorigin(`UNIGO_SITE_BASE_URL`とローカルの`http://localhost:8080`)を許可する。DashboardのStorage settingsから設定する。
+記事画像はGitHub Actionsが同期APIのsigned URLを使ってStorageへPUTする。Storage CORSでサイトorigin(`UNIGO_SITE_BASE_URL`)を許可する。接続手順は[content-sync/README.md](content-sync/README.md)。
 
 ### 2. Vercel projectと環境変数
 
@@ -50,6 +50,8 @@ Vercel FunctionやMiddleware、External Rewriteは使わない。
 | `UNIGO_ADMIN_USER_IDS` | 管理者UUID(カンマ区切り) | yes |
 | `UNIGO_SITE_BASE_URL` | `https://unagi.wuhu1s.land` | |
 | `UNIGO_MEDIA_PUBLIC_BASE` | `https://YOUR_REF.supabase.co/storage/v1/object/public/images` | |
+| `UNIGO_CONTENT_SYNC_SECRET` | 記事同期HMAC用の長い乱数 | yes |
+| `UNIGO_CONTENT_SYNC_REPOSITORY` | `SouichiroTsujimoto/unagi-content` | |
 | `UNIGO_SITE_NAME` | 任意 | |
 | `UNIGO_SITE_DESCRIPTION` | 任意 | |
 | `PORT` | `8080`(`Dockerfile.vercel`の既定と同じ) | |
@@ -63,7 +65,8 @@ Vercel Hobbyは個人・非商用だけに使える。
 ## 性質
 
 - idle後の初回リクエストはコールドスタートになる。
-- 画像本体はVercelを通らない。Goは5 MiBまでの検証だけを行う。
+- 画像本体はVercelを通らない。Goは5 MiBまでの検証とsigned URL発行だけを行う。
+- 記事本文の更新はVercel deployを起こさない。`unagi-content`のmain同期だけがread modelを更新する。
 - Supabaseの無料枠は7日無アクセスでpauseし、その間はDB接続が落ちる。
 - Vercelのデプロイとmigration適用は同じpushで並行する。初回だけ、schemaが先に着く前に起動すると失敗するので、Vercel側を再deployする。
 

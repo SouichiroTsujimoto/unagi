@@ -77,10 +77,12 @@ func main() {
 		Banner:            *banner,
 		Site:              site,
 		Auth:              authCfg,
-		MediaPublicBase:   os.Getenv("UNIGO_MEDIA_PUBLIC_BASE"),
-		MediaBucket:       envOr("UNIGO_MEDIA_BUCKET", "images"),
-		SupabaseURL:       envOr("UNIGO_SUPABASE_URL", authCfg.SupabaseURL),
-		SupabaseSecretKey: os.Getenv("UNIGO_SUPABASE_SECRET_KEY"),
+		MediaPublicBase:       os.Getenv("UNIGO_MEDIA_PUBLIC_BASE"),
+		MediaBucket:           envOr("UNIGO_MEDIA_BUCKET", "images"),
+		SupabaseURL:           envOr("UNIGO_SUPABASE_URL", authCfg.SupabaseURL),
+		SupabaseSecretKey:     os.Getenv("UNIGO_SUPABASE_SECRET_KEY"),
+		ContentSyncSecret:     os.Getenv("UNIGO_CONTENT_SYNC_SECRET"),
+		ContentSyncRepository: envOr("UNIGO_CONTENT_SYNC_REPOSITORY", "SouichiroTsujimoto/unagi-content"),
 	}); err != nil {
 		slog.Error("application stopped", "err", err)
 		os.Exit(1)

@@ -8,11 +8,11 @@ import (
 	"github.com/SouichiroTsujimoto/unagi/internal/web/admin"
 	webarticle "github.com/SouichiroTsujimoto/unagi/internal/web/article"
 	webauth "github.com/SouichiroTsujimoto/unagi/internal/web/auth"
+	webcontentsync "github.com/SouichiroTsujimoto/unagi/internal/web/contentsync"
 	"github.com/SouichiroTsujimoto/unagi/internal/web/engagement"
 	"github.com/SouichiroTsujimoto/unagi/internal/web/feed"
 	"github.com/SouichiroTsujimoto/unagi/internal/web/home"
 	"github.com/SouichiroTsujimoto/unagi/internal/web/linkcard"
-	webmedia "github.com/SouichiroTsujimoto/unagi/internal/web/media"
 	"github.com/SouichiroTsujimoto/unagi/internal/web/sitemap"
 	"github.com/labstack/echo/v4"
 )
@@ -23,11 +23,11 @@ type Handlers struct {
 	About      *about.Handler
 	Feed       *feed.Handler
 	Sitemap    *sitemap.Handler
-	Admin      *admin.Handler
-	Media      *webmedia.Handler
-	Engagement *engagement.Handler
-	LinkCard   *linkcard.Handler
-	Auth       *webauth.Handler
+	Admin       *admin.Handler
+	ContentSync *webcontentsync.Handler
+	Engagement  *engagement.Handler
+	LinkCard    *linkcard.Handler
+	Auth        *webauth.Handler
 }
 
 func New(h Handlers, staticFiles, islandFiles fs.FS) *echo.Echo {
@@ -65,13 +65,12 @@ func New(h Handlers, staticFiles, islandFiles fs.FS) *echo.Echo {
 
 	adminPages := router.Group("/admin", h.Admin.RequireAuth, h.Admin.RequireOrigin)
 	adminPages.GET("", h.Admin.Index)
-	adminPages.GET("/articles/new", h.Admin.NewArticlePage)
-	adminPages.GET("/articles/:id", h.Admin.EditArticlePage)
+	adminPages.GET("/articles/:id", h.Admin.ArticlePage)
+	adminPages.POST("/articles/:id/publish", h.Admin.PublishArticle)
+	adminPages.POST("/articles/:id/unpublish", h.Admin.UnpublishArticle)
 	adminPages.POST("/logout", h.Admin.Logout)
 
 	adminAPI := router.Group("/api/admin", h.Admin.RequireAuth, h.Admin.RequireOrigin)
-	adminAPI.POST("/articles", h.Admin.CreateArticle)
-	adminAPI.PUT("/articles/:id", h.Admin.SaveArticle)
 	adminAPI.POST("/articles/:id/publish", h.Admin.PublishArticle)
 	adminAPI.POST("/articles/:id/unpublish", h.Admin.UnpublishArticle)
 	adminAPI.GET("/articles/:id/stickers", h.Admin.ListStickers)
@@ -79,9 +78,13 @@ func New(h Handlers, staticFiles, islandFiles fs.FS) *echo.Echo {
 	adminAPI.GET("/articles/:id/comments", h.Admin.ListComments)
 	adminAPI.PATCH("/articles/:id/comments/:commentID", h.Admin.UpdateComment)
 	adminAPI.DELETE("/articles/:id/comments", h.Admin.DeleteComments)
-	adminAPI.POST("/preview", h.Admin.Preview)
-	adminAPI.POST("/media/sign", h.Media.SignUpload)
-	adminAPI.POST("/media/complete", h.Media.CompleteUpload)
+
+	if h.ContentSync != nil {
+		syncAPI := router.Group("/api/content-sync")
+		syncAPI.POST("/images", h.ContentSync.Images)
+		syncAPI.POST("/dry-run", h.ContentSync.DryRun)
+		syncAPI.POST("/sync", h.ContentSync.Apply)
+	}
 
 	return router
 }

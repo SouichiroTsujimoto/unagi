@@ -5,7 +5,6 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
-	"io/fs"
 	"net/url"
 	"path"
 	"regexp"
@@ -61,6 +60,8 @@ type dbArticle struct {
 	Status              string        `bun:",notnull"`
 	PublishedRevisionID sql.NullInt64 `bun:"published_revision_id"`
 	PublishedAt         sql.NullTime  `bun:"published_at"`
+	SourcePath          string        `bun:"source_path"`
+	SourceHash          string        `bun:"source_hash"`
 	CreatedAt           time.Time     `bun:",notnull"`
 	UpdatedAt           time.Time     `bun:",notnull"`
 }
@@ -189,6 +190,11 @@ func (a Article) IsPublic(now time.Time) bool {
 	return !a.PublishedAt.After(now.In(jst))
 }
 
+// ValidateSlug reports whether slug is a valid article filename stem.
+func ValidateSlug(slug string) error {
+	return validateSlug(slug)
+}
+
 func validateSlug(slug string) error {
 	if !slugRE.MatchString(slug) {
 		return ErrInvalidSlug
@@ -301,54 +307,4 @@ func topicSlug(name string) string {
 		return "topic"
 	}
 	return s
-}
-
-// SeedFromFS imports Markdown articles when the table is empty.
-func (a *Articles) SeedFromFS(ctx context.Context, articlesFS fs.FS) (int, error) {
-	count, err := a.db.NewSelect().Model((*dbArticle)(nil)).Count(ctx)
-	if err != nil {
-		return 0, fmt.Errorf("count articles: %w", err)
-	}
-	if count > 0 {
-		return 0, nil
-	}
-
-	entries, err := fs.ReadDir(articlesFS, ".")
-	if err != nil {
-		return 0, fmt.Errorf("read articles: %w", err)
-	}
-	imported := 0
-	for _, entry := range entries {
-		if entry.IsDir() || !strings.HasSuffix(entry.Name(), ".md") {
-			continue
-		}
-		slug := strings.TrimSuffix(entry.Name(), ".md")
-		data, err := fs.ReadFile(articlesFS, entry.Name())
-		if err != nil {
-			return imported, fmt.Errorf("read %s: %w", entry.Name(), err)
-		}
-		parsed, err := Parse(slug, data)
-		if err != nil {
-			return imported, fmt.Errorf("parse %s: %w", entry.Name(), err)
-		}
-		created, err := a.Create(ctx, SaveInput{
-			Slug:        parsed.Slug,
-			Title:       parsed.Title,
-			Emoji:       parsed.Emoji,
-			Type:        parsed.Type,
-			Topics:      parsed.Topics,
-			BodyMD:      parsed.BodyMD,
-			PublishedAt: parsed.PublishedAt,
-		})
-		if err != nil {
-			return imported, err
-		}
-		if parsed.Published {
-			if _, err := a.Publish(ctx, created.ID, created.RevisionID, parsed.PublishedAt); err != nil {
-				return imported, err
-			}
-		}
-		imported++
-	}
-	return imported, nil
 }

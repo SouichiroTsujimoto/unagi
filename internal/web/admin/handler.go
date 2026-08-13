@@ -118,14 +118,10 @@ func (h *Handler) Index(c echo.Context) error {
 	return h.render(c, IndexPage(h.site, items))
 }
 
-func (h *Handler) NewArticlePage(c echo.Context) error {
-	return h.render(c, EditPage(h.site, article.Article{Type: "tech"}, true))
-}
-
-func (h *Handler) EditArticlePage(c echo.Context) error {
+func (h *Handler) ArticlePage(c echo.Context) error {
 	id, err := strconv.ParseInt(c.Param("id"), 10, 64)
 	if err != nil {
-		return echo.NewHTTPError(http.StatusBadRequest, "invalid id")
+		return echo.NewHTTPError(http.StatusNotFound, "not found")
 	}
 	item, err := h.articles.GetByID(c.Request().Context(), id)
 	if errors.Is(err, article.ErrNotFound) {
@@ -134,7 +130,7 @@ func (h *Handler) EditArticlePage(c echo.Context) error {
 	if err != nil {
 		return err
 	}
-	return h.render(c, EditPage(h.site, item, false))
+	return h.render(c, ManagePage(h.site, item))
 }
 
 func (h *Handler) Logout(c echo.Context) error {

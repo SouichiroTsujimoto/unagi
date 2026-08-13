@@ -2,7 +2,6 @@ package article
 
 import (
 	"fmt"
-	"strconv"
 	"strings"
 	"time"
 )
@@ -36,30 +35,18 @@ func Parse(slug string, data []byte) (Article, error) {
 		return Article{}, fmt.Errorf("invalid type %q", articleType)
 	}
 
-	published, err := parseBool(meta["published"])
-	if err != nil {
-		return Article{}, fmt.Errorf("published: %w", err)
-	}
-
-	publishedAt, err := parsePublishedAt(meta["published_at"])
-	if err != nil {
-		return Article{}, err
-	}
-
 	topics, err := parseTopics(meta["topics"])
 	if err != nil {
 		return Article{}, err
 	}
 
 	return Article{
-		Slug:        slug,
-		Title:       title,
-		Emoji:       strings.TrimSpace(meta["emoji"]),
-		Type:        articleType,
-		Topics:      topics,
-		Published:   published,
-		PublishedAt: publishedAt,
-		BodyMD:      strings.TrimSpace(string(matches[2])) + "\n",
+		Slug:   slug,
+		Title:  title,
+		Emoji:  strings.TrimSpace(meta["emoji"]),
+		Type:   articleType,
+		Topics: topics,
+		BodyMD: strings.TrimSpace(string(matches[2])) + "\n",
 	}, nil
 }
 
@@ -148,38 +135,6 @@ func splitCSVRespectingQuotes(s string) []string {
 	}
 	parts = append(parts, b.String())
 	return parts
-}
-
-func parseBool(raw string) (bool, error) {
-	raw = strings.TrimSpace(unquote(raw))
-	if raw == "" {
-		return false, nil
-	}
-	v, err := strconv.ParseBool(raw)
-	if err != nil {
-		return false, err
-	}
-	return v, nil
-}
-
-func parsePublishedAt(raw string) (time.Time, error) {
-	raw = strings.TrimSpace(unquote(raw))
-	if raw == "" {
-		return time.Time{}, nil
-	}
-	layouts := []string{
-		"2006-01-02 15:04",
-		"2006-01-02",
-	}
-	var lastErr error
-	for _, layout := range layouts {
-		t, err := time.ParseInLocation(layout, raw, jst)
-		if err == nil {
-			return t, nil
-		}
-		lastErr = err
-	}
-	return time.Time{}, fmt.Errorf("published_at: %w", lastErr)
 }
 
 func unquote(s string) string {

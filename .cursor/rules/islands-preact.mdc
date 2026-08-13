@@ -26,7 +26,7 @@ alwaysApply: false
 ```templ
 <is-land on:visible>
 	<template data-island>
-		<article-editor article-id="0" is-new="true"></article-editor>
+		<admin-comments article-id="1"></admin-comments>
 	</template>
 </is-land>
 ```
@@ -36,20 +36,20 @@ import { html } from "htm/preact";
 import { useState } from "preact/hooks";
 import register from "preact-custom-element";
 
-function ArticleEditor() {
-	const [title, setTitle] = useState("");
-	return html`<input class="input w-full" value=${title} onInput=${(e) => setTitle(e.currentTarget.value)} />`;
+function AdminComments(props) {
+	const [message, setMessage] = useState("");
+	return html`<p class="text-sm">${props.articleId} ${message}</p>`;
 }
 
-register(ArticleEditor, "article-editor", ["article-id", "is-new"]);
+register(AdminComments, "admin-comments", ["article-id"]);
 ```
 
-属性で初期値を渡すときは`register`の第3引数にobserved attributesを列挙する(`article-editor`参照)。
+属性で初期値を渡すときは`register`の第3引数にobserved attributesを列挙する(`admin-comments`参照)。
 
 ## daisyUI 5
 
 - `form-control` / `label-text` / `*-bordered`は使わない(効かない)。
-- フォームは`fieldset.fieldset` + `label.label` + `input.input w-full`(既存の`article-editor`に合わせる)。
+- フォームは`fieldset.fieldset` + `label.label` + `input.input w-full`(既存のadmin islandに合わせる)。
 
 ## 禁止例
 
@@ -58,5 +58,5 @@ register(ArticleEditor, "article-editor", ["article-id", "is-new"]);
 document.getElementById("login-btn")?.addEventListener("click", ...);
 
 // ✅ GOOD: Preact islandに状態とsubmitを閉じる
-register(ArticleEditor, "article-editor", ["article-id", "is-new"]);
+register(AdminComments, "admin-comments", ["article-id"]);
 ```

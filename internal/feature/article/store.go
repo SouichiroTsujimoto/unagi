@@ -329,7 +329,12 @@ func (a *Articles) Publish(ctx context.Context, articleID, revisionID int64, pub
 		}
 		row.Status = StatusPublished
 		row.PublishedRevisionID = sql.NullInt64{Int64: revisionID, Valid: true}
-		row.PublishedAt = sql.NullTime{Time: publishedAt.UTC(), Valid: true}
+		if !row.PublishedAt.Valid {
+			if publishedAt.IsZero() {
+				publishedAt = now
+			}
+			row.PublishedAt = sql.NullTime{Time: publishedAt.UTC(), Valid: true}
+		}
 		row.UpdatedAt = now
 		_, err := tx.NewUpdate().
 			Model(&row).
@@ -552,10 +557,6 @@ func FormatMarkdown(a Article) string {
 	fmt.Fprintf(&b, "emoji: %q\n", a.Emoji)
 	fmt.Fprintf(&b, "type: %q\n", a.Type)
 	fmt.Fprintf(&b, "topics: [%s]\n", strings.Join(topics, ", "))
-	fmt.Fprintf(&b, "published: %v\n", a.Published)
-	if !a.PublishedAt.IsZero() {
-		fmt.Fprintf(&b, "published_at: %s\n", a.PublishedAt.In(jst).Format("2006-01-02 15:04"))
-	}
 	b.WriteString("---\n\n")
 	b.WriteString(strings.TrimSpace(a.BodyMD))
 	b.WriteByte('\n')

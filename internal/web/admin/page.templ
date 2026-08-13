@@ -63,20 +63,20 @@ templ IndexPage(site layout.Site, items []article.Article) {
 				<div class="space-y-1">
 					<h1 class="text-xl font-semibold tracking-tight">記事管理</h1>
 					<p class="text-base-content/55 text-[15px]">{ site.Name }</p>
+					<p class="text-base-content/45 text-sm leading-relaxed">
+						本文と画像はGitHubの記事リポジトリが正本です。ここでは公開切替と、コメント・ステッカーの管理だけを行います。
+					</p>
 				</div>
-				<div class="flex flex-wrap items-center gap-2">
-					<a href="/admin/articles/new" class="btn btn-primary btn-sm">新規</a>
-					<form method="post" action="/admin/logout">
-						<button class="btn btn-ghost btn-sm" type="submit">Logout</button>
-					</form>
-				</div>
+				<form method="post" action="/admin/logout">
+					<button class="btn btn-ghost btn-sm" type="submit">Logout</button>
+				</form>
 			</header>
 			if len(items) == 0 {
-				<p class="text-base-content/55 text-[15px]">記事がありません。</p>
+				<p class="text-base-content/55 text-[15px]">記事がありません。記事リポジトリを同期するとここに現れます。</p>
 			} else {
 				<ul class="divide-y divide-base-content/10">
 					for _, item := range items {
-						<li class="flex items-start justify-between gap-4 py-4 first:pt-0 last:pb-0">
+						<li class="flex flex-wrap items-start justify-between gap-4 py-4 first:pt-0 last:pb-0">
 							<div class="space-y-1">
 								<a href={ templ.SafeURL("/admin/articles/" + itoa(item.ID)) } class="font-medium hover:underline">
 									if item.Emoji != "" {
@@ -85,12 +85,13 @@ templ IndexPage(site layout.Site, items []article.Article) {
 									{ item.Title }
 								</a>
 								<p class="text-base-content/45 text-sm">
-									{ item.Slug } · { item.Status }
+									{ item.Slug } · { statusLabel(item) }
 									if !item.PublishedAt.IsZero() {
-										{ " · " + item.PublishedAt.Format("2006-01-02 15:04") }
+										{ " · 投稿日 " + item.PublishedAt.Format("2006-01-02 15:04") }
 									}
 								</p>
 							</div>
+							@publishToggle(item)
 						</li>
 					}
 				</ul>
@@ -99,60 +100,68 @@ templ IndexPage(site layout.Site, items []article.Article) {
 	}
 }
 
-templ EditPage(site layout.Site, item article.Article, isNew bool) {
-	@shell(site, editTitle(item, isNew), "admin") {
+templ ManagePage(site layout.Site, item article.Article) {
+	@shell(site, item.Title, "admin") {
 		<main class="flex flex-col gap-6">
 			<header class="flex flex-wrap items-end justify-between gap-4">
 				<div class="space-y-1">
-					<p class="text-sm text-base-content/45"><a href="/admin" class="hover:underline">記事管理</a> / 編集</p>
-					<h1 class="text-xl font-semibold tracking-tight">{ editTitle(item, isNew) }</h1>
+					<p class="text-sm text-base-content/45"><a href="/admin" class="hover:underline">記事管理</a> / 管理</p>
+					<h1 class="text-xl font-semibold tracking-tight">
+						if item.Emoji != "" {
+							{ item.Emoji + " " }
+						}
+						{ item.Title }
+					</h1>
+					<p class="text-base-content/45 text-sm">
+						{ item.Slug } · { statusLabel(item) }
+						if !item.PublishedAt.IsZero() {
+							{ " · 投稿日 " + item.PublishedAt.Format("2006-01-02 15:04") }
+						}
+					</p>
 				</div>
-				<a href="/admin" class="btn btn-ghost btn-sm">戻る</a>
+				<div class="flex flex-wrap items-center gap-2">
+					@publishToggle(item)
+					<a href="/admin" class="btn btn-ghost btn-sm">戻る</a>
+				</div>
 			</header>
-			<is-land on:visible>
-				<template data-island>
-					<article-editor
-						article-id={ itoa(item.ID) }
-						is-new={ boolAttr(isNew) }
-						slug={ item.Slug }
-						title={ item.Title }
-						emoji={ item.Emoji }
-						type={ item.Type }
-						topics={ joinTopics(item.Topics) }
-						body-md={ item.BodyMD }
-						published-at={ formatPublishedAt(item) }
-						published={ boolAttr(item.Published) }
-					></article-editor>
-				</template>
-			</is-land>
-			if !isNew && item.ID > 0 {
-				<section class="space-y-3 border-t border-base-content/10 pt-8">
-					<header class="space-y-1">
-						<h2 class="text-base font-semibold tracking-tight">ステッカーボード</h2>
-						<p class="text-base-content/55 text-[15px] leading-relaxed">
-							貼られた順の一覧です。選択して剥がすか、すべて削除できます。
-						</p>
-					</header>
-					<is-land on:visible>
-						<template data-island>
-							<admin-stickers article-id={ itoa(item.ID) }></admin-stickers>
-						</template>
-					</is-land>
-				</section>
-				<section class="space-y-3 border-t border-base-content/10 pt-8">
-					<header class="space-y-1">
-						<h2 class="text-base font-semibold tracking-tight">コメント</h2>
-						<p class="text-base-content/55 text-[15px] leading-relaxed">
-							非表示・再表示・削除ができます。非表示にしたコメントは公開ページに出ません。
-						</p>
-					</header>
-					<is-land on:visible>
-						<template data-island>
-							<admin-comments article-id={ itoa(item.ID) }></admin-comments>
-						</template>
-					</is-land>
-				</section>
-			}
+			<section class="space-y-3 border-t border-base-content/10 pt-8">
+				<header class="space-y-1">
+					<h2 class="text-base font-semibold tracking-tight">ステッカーボード</h2>
+					<p class="text-base-content/55 text-[15px] leading-relaxed">
+						貼られた順の一覧です。選択して剥がすか、すべて削除できます。
+					</p>
+				</header>
+				<is-land on:visible>
+					<template data-island>
+						<admin-stickers article-id={ itoa(item.ID) }></admin-stickers>
+					</template>
+				</is-land>
+			</section>
+			<section class="space-y-3 border-t border-base-content/10 pt-8">
+				<header class="space-y-1">
+					<h2 class="text-base font-semibold tracking-tight">コメント</h2>
+					<p class="text-base-content/55 text-[15px] leading-relaxed">
+						非表示・再表示・削除ができます。非表示にしたコメントは公開ページに出ません。
+					</p>
+				</header>
+				<is-land on:visible>
+					<template data-island>
+						<admin-comments article-id={ itoa(item.ID) }></admin-comments>
+					</template>
+				</is-land>
+			</section>
 		</main>
+	}
+}
+
+templ publishToggle(item article.Article) {
+	if item.Published {
+		<form method="post" action={ templ.SafeURL("/admin/articles/" + itoa(item.ID) + "/unpublish") }>
+			<button class="btn btn-ghost btn-sm" type="submit">非公開にする</button>
+		</form>
+	} else {
+		<form method="post" action={ templ.SafeURL("/admin/articles/" + itoa(item.ID) + "/publish") }>
+			<button class="btn btn-primary btn-sm" type="submit">公開する</button>
+		</form>
 	}
 }

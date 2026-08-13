@@ -40,11 +40,12 @@ jj git push
 
 ## 構成の要点
 
-- 公開記事の正本はSupabase Postgres。埋め込み`articles/`は空DB時のseed用
+- 記事・画像の正本は[unagi-content](https://github.com/SouichiroTsujimoto/unagi-content)。Postgresは公開サイトのread model
 - schemaは`supabase/migrations/`。mainへのpushでGitHub integrationが適用する。アプリは起動時にmigrateしない
-- 管理: `/admin`(Supabase AuthのX OAuth + `UNIGO_ADMIN_USER_IDS`)。読者ログインも同じX provider
-- 画像はSupabase Storage公開バケット。管理画面はsigned URLで直接uploadし、Markdownの`/images/...`は公開ベースURLへ書き換え。アプリは`GET /images`を持たない
+- 管理: `/admin`(Supabase AuthのX OAuth + `UNIGO_ADMIN_USER_IDS`)で公開切替とコメント・ステッカー管理。本文編集はしない
+- 画像はSupabase Storage公開バケット。GitHub Actionsがcontent-addressed objectを直接PUTする。Markdownの`/images/...`は公開ベースURLへ書き換え。アプリは`GET /images`を持たない
 - 独自ドメインとTLSはVercelで終端し、同じprojectの`Dockerfile.vercel`コンテナ(東京`hnd1`)がアプリを動かす。アプリはHTTPのみ(`PORT`)
+- 記事更新はVercel deployを起こさない。同期手順は[deploy/content-sync/README.md](deploy/content-sync/README.md)
 
 ## License
 

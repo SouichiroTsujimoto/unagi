@@ -1,6 +1,6 @@
 # images
 
-Zenn互換の記事画像置き場です。Markdownからは `/images/example.png` のように参照します。
+TUI / 記事ページの色付きBrailleアート置き場です。記事本体のPNGは[unagi-content](https://github.com/SouichiroTsujimoto/unagi-content)の`images/`が正本です。
 
 ## 色付きBrailleアート(実験)
 

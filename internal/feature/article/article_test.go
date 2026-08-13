@@ -4,7 +4,6 @@ import (
 	"context"
 	"strings"
 	"testing"
-	"testing/fstest"
 	"time"
 
 	"github.com/SouichiroTsujimoto/unagi/internal/db"
@@ -40,8 +39,11 @@ Body with [link](https://example.com).
 	if len(got.Topics) != 2 || got.Topics[0] != "Go" {
 		t.Fatalf("topics=%v", got.Topics)
 	}
+	if got.Published || !got.PublishedAt.IsZero() {
+		t.Fatalf("git published fields must be ignored: %+v", got)
+	}
 	now := time.Date(2026, 8, 12, 0, 0, 0, 0, jst)
-	art := Article{Status: StatusPublished, Published: true, PublishedAt: got.PublishedAt}
+	art := Article{Status: StatusPublished, Published: true, PublishedAt: time.Date(2026, 8, 1, 9, 0, 0, 0, jst)}
 	if !art.IsPublic(now) {
 		t.Fatal("expected public")
 	}
@@ -124,35 +126,39 @@ func TestCreatePublishAndList(t *testing.T) {
 	}
 }
 
-func TestSeedFromFS(t *testing.T) {
+func TestPublishKeepsOriginalPublishedAt(t *testing.T) {
 	t.Parallel()
 	store := openTestArticles(t)
-	fsys := fstest.MapFS{
-		"hello-unagi.md": &fstest.MapFile{Data: []byte(`---
-title: "unagiへようこそ"
-emoji: "🍣"
-type: "tech"
-topics: ["Go"]
-published: true
-published_at: 2026-08-01 09:00
----
-
-Hello
-`)},
-	}
-	n, err := store.SeedFromFS(context.Background(), fsys)
+	ctx := context.Background()
+	first := time.Date(2026, 8, 1, 9, 0, 0, 0, jst)
+	created, err := store.Create(ctx, SaveInput{
+		Slug:   "keep-date",
+		Title:  "Keep",
+		Type:   "tech",
+		BodyMD: "one\n",
+	})
 	if err != nil {
 		t.Fatal(err)
 	}
-	if n != 1 {
-		t.Fatalf("imported=%d", n)
+	if _, err := store.Publish(ctx, created.ID, created.RevisionID, first); err != nil {
+		t.Fatal(err)
 	}
-	n2, err := store.SeedFromFS(context.Background(), fsys)
+	if _, err := store.Unpublish(ctx, created.ID); err != nil {
+		t.Fatal(err)
+	}
+	item, err := store.GetByID(ctx, created.ID)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if n2 != 0 {
-		t.Fatalf("second seed=%d", n2)
+	if _, err := store.Publish(ctx, item.ID, item.RevisionID, time.Date(2026, 8, 12, 0, 0, 0, 0, jst)); err != nil {
+		t.Fatal(err)
+	}
+	again, err := store.GetByID(ctx, created.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !again.PublishedAt.Equal(first) {
+		t.Fatalf("published_at changed: %v want %v", again.PublishedAt, first)
 	}
 }
 

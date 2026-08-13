@@ -4,57 +4,11 @@ import (
 	"errors"
 	"net/http"
 	"strconv"
-	"time"
 
 	"github.com/SouichiroTsujimoto/unagi/internal/feature/article"
 	"github.com/SouichiroTsujimoto/unagi/internal/feature/engagement"
 	"github.com/labstack/echo/v4"
 )
-
-func (h *Handler) CreateArticle(c echo.Context) error {
-	in, err := bindSaveInput(c)
-	if err != nil {
-		return err
-	}
-	created, err := h.articles.Create(c.Request().Context(), in)
-	if errors.Is(err, article.ErrSlugExists) {
-		return echo.NewHTTPError(http.StatusConflict, "slug exists")
-	}
-	if errors.Is(err, article.ErrInvalidInput) || errors.Is(err, article.ErrInvalidSlug) {
-		return echo.NewHTTPError(http.StatusBadRequest, err.Error())
-	}
-	if err != nil {
-		h.log.Error("create article", "err", err)
-		return echo.NewHTTPError(http.StatusInternalServerError, "internal error")
-	}
-	return c.JSON(http.StatusCreated, created)
-}
-
-func (h *Handler) SaveArticle(c echo.Context) error {
-	id, err := strconv.ParseInt(c.Param("id"), 10, 64)
-	if err != nil {
-		return echo.NewHTTPError(http.StatusBadRequest, "invalid id")
-	}
-	in, err := bindSaveInput(c)
-	if err != nil {
-		return err
-	}
-	saved, err := h.articles.SaveRevision(c.Request().Context(), id, in)
-	if errors.Is(err, article.ErrNotFound) {
-		return echo.NewHTTPError(http.StatusNotFound, "not found")
-	}
-	if errors.Is(err, article.ErrSlugExists) {
-		return echo.NewHTTPError(http.StatusConflict, "slug exists")
-	}
-	if errors.Is(err, article.ErrInvalidInput) || errors.Is(err, article.ErrInvalidSlug) {
-		return echo.NewHTTPError(http.StatusBadRequest, err.Error())
-	}
-	if err != nil {
-		h.log.Error("save article", "err", err)
-		return echo.NewHTTPError(http.StatusInternalServerError, "internal error")
-	}
-	return c.JSON(http.StatusOK, saved)
-}
 
 func (h *Handler) PublishArticle(c echo.Context) error {
 	id, err := strconv.ParseInt(c.Param("id"), 10, 64)
@@ -68,21 +22,14 @@ func (h *Handler) PublishArticle(c echo.Context) error {
 	if err != nil {
 		return err
 	}
-	var body struct {
-		PublishedAt string `json:"publishedAt"`
-	}
-	_ = c.Bind(&body)
-	publishedAt := item.PublishedAt
-	if body.PublishedAt != "" {
-		if t, err := time.ParseInLocation("2006-01-02 15:04", body.PublishedAt, time.FixedZone("Asia/Tokyo", 9*60*60)); err == nil {
-			publishedAt = t
-		}
-	}
-	published, err := h.articles.Publish(c.Request().Context(), id, item.RevisionID, publishedAt)
+	published, err := h.articles.Publish(c.Request().Context(), id, item.RevisionID, item.PublishedAt)
 	if err != nil {
 		return err
 	}
-	return c.JSON(http.StatusOK, published)
+	if wantsJSON(c) {
+		return c.JSON(http.StatusOK, published)
+	}
+	return c.Redirect(http.StatusSeeOther, "/admin")
 }
 
 func (h *Handler) UnpublishArticle(c echo.Context) error {
@@ -97,21 +44,10 @@ func (h *Handler) UnpublishArticle(c echo.Context) error {
 	if err != nil {
 		return err
 	}
-	return c.JSON(http.StatusOK, item)
-}
-
-func (h *Handler) Preview(c echo.Context) error {
-	var body struct {
-		BodyMD string `json:"bodyMd"`
+	if wantsJSON(c) {
+		return c.JSON(http.StatusOK, item)
 	}
-	if err := c.Bind(&body); err != nil {
-		return echo.NewHTTPError(http.StatusBadRequest, "invalid json")
-	}
-	html, err := h.articles.RenderHTMLSync(c.Request().Context(), body.BodyMD)
-	if err != nil {
-		return echo.NewHTTPError(http.StatusBadRequest, "render failed")
-	}
-	return c.JSON(http.StatusOK, map[string]string{"html": html})
+	return c.Redirect(http.StatusSeeOther, "/admin")
 }
 
 func (h *Handler) ListStickers(c echo.Context) error {
@@ -237,39 +173,4 @@ func (h *Handler) DeleteComments(c echo.Context) error {
 		return echo.NewHTTPError(http.StatusInternalServerError, "internal error")
 	}
 	return c.JSON(http.StatusOK, map[string]any{"deleted": n})
-}
-
-func bindSaveInput(c echo.Context) (article.SaveInput, error) {
-	var body struct {
-		Slug        string   `json:"slug"`
-		Title       string   `json:"title"`
-		Emoji       string   `json:"emoji"`
-		Type        string   `json:"type"`
-		Topics      []string `json:"topics"`
-		BodyMD      string   `json:"bodyMd"`
-		PublishedAt string   `json:"publishedAt"`
-	}
-	if err := c.Bind(&body); err != nil {
-		return article.SaveInput{}, echo.NewHTTPError(http.StatusBadRequest, "invalid json")
-	}
-	in := article.SaveInput{
-		Slug:   body.Slug,
-		Title:  body.Title,
-		Emoji:  body.Emoji,
-		Type:   body.Type,
-		Topics: body.Topics,
-		BodyMD: body.BodyMD,
-	}
-	if body.PublishedAt != "" {
-		t, err := time.ParseInLocation("2006-01-02 15:04", body.PublishedAt, time.FixedZone("Asia/Tokyo", 9*60*60))
-		if err != nil {
-			t2, err2 := time.ParseInLocation("2006-01-02", body.PublishedAt, time.FixedZone("Asia/Tokyo", 9*60*60))
-			if err2 != nil {
-				return article.SaveInput{}, echo.NewHTTPError(http.StatusBadRequest, "invalid publishedAt")
-			}
-			t = t2
-		}
-		in.PublishedAt = t
-	}
-	return in, nil
 }

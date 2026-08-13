@@ -40,6 +40,7 @@ type ObjectStore interface {
 	Put(ctx context.Context, key string, r io.Reader, contentType string, size int64) error
 	Open(ctx context.Context, key string) (io.ReadCloser, string, int64, error)
 	Delete(ctx context.Context, key string) error
+	Exists(ctx context.Context, key string) (bool, error)
 }
 
 type Media struct {
@@ -73,6 +74,80 @@ type SignResult struct {
 type UploadResult struct {
 	Media Media
 	URL   string
+}
+
+// ContentAddressedKey builds `{sha256}{ext}` from a hex digest and MIME type.
+func ContentAddressedKey(sha256Hex, contentType string) (string, error) {
+	sha256Hex = strings.ToLower(strings.TrimSpace(sha256Hex))
+	if !validSHA256(sha256Hex) {
+		return "", ErrInvalidObject
+	}
+	ct := normalizeContentType(contentType, sha256Hex)
+	ext, ok := allowedTypes[ct]
+	if !ok {
+		return "", ErrInvalidType
+	}
+	return sha256Hex + ext, nil
+}
+
+// BeginKeyedUpload signs an upload for a caller-chosen content-addressed object key.
+func (l *Library) BeginKeyedUpload(ctx context.Context, key, contentType string, sizeBytes int64) (SignResult, error) {
+	if sizeBytes > MaxUploadBytes {
+		return SignResult{}, ErrTooLarge
+	}
+	key = strings.TrimPrefix(strings.TrimSpace(key), "/")
+	if !validObjectKey(key) {
+		return SignResult{}, ErrInvalidObject
+	}
+	ct := normalizeContentType(contentType, key)
+	ext, ok := allowedTypes[ct]
+	if !ok {
+		return SignResult{}, ErrInvalidType
+	}
+	if !strings.HasSuffix(key, ext) {
+		return SignResult{}, ErrInvalidType
+	}
+	signedURL, token, err := l.store.SignUpload(ctx, key, ct)
+	if err != nil {
+		return SignResult{}, fmt.Errorf("sign upload: %w", err)
+	}
+	return SignResult{
+		ObjectKey:   key,
+		SignedURL:   signedURL,
+		Token:       token,
+		ContentType: ct,
+		MarkdownURL: markdownURL(key),
+	}, nil
+}
+
+// Exists reports whether the object is already in the store.
+func (l *Library) Exists(ctx context.Context, key string) (bool, error) {
+	key = strings.TrimPrefix(key, "/")
+	if !validObjectKey(key) {
+		return false, ErrInvalidObject
+	}
+	return l.store.Exists(ctx, key)
+}
+
+// Upsert records media metadata for a content-addressed object.
+func (l *Library) Upsert(ctx context.Context, item Media) error {
+	if !validObjectKey(item.ObjectKey) || !validSHA256(item.SHA256) {
+		return ErrInvalidObject
+	}
+	if item.CreatedAt.IsZero() {
+		item.CreatedAt = time.Now().UTC()
+	}
+	_, err := l.db.NewInsert().
+		Model(&item).
+		On("CONFLICT (object_key) DO UPDATE").
+		Set("content_type = EXCLUDED.content_type").
+		Set("size_bytes = EXCLUDED.size_bytes").
+		Set("sha256 = EXCLUDED.sha256").
+		Exec(ctx)
+	if err != nil {
+		return fmt.Errorf("upsert media: %w", err)
+	}
+	return nil
 }
 
 // BeginUpload validates hints, generates an object key, and returns a path-limited signed upload URL.
@@ -198,6 +273,18 @@ func validObjectKey(key string) bool {
 		return false
 	}
 	return path.Base(key) == key
+}
+
+func validSHA256(v string) bool {
+	if len(v) != 64 {
+		return false
+	}
+	for _, r := range v {
+		if (r < '0' || r > '9') && (r < 'a' || r > 'f') {
+			return false
+		}
+	}
+	return true
 }
 
 func normalizeContentType(detected, filename string) string {
