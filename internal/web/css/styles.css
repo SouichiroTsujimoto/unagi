@@ -610,6 +610,13 @@
 
 	.site-header-theme {
 		justify-self: end;
+		cursor: pointer;
+		color: color-mix(in oklab, var(--color-base-content) 50%, transparent);
+		transition: color 150ms ease;
+	}
+
+	.site-header-theme:is(:hover, :focus-visible) {
+		color: var(--color-primary);
 	}
 
 	/* Site brand (braille ○ + unagi) */

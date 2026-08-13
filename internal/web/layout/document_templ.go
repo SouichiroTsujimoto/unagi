@@ -328,7 +328,7 @@ func Document(meta PageMeta) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 32, "\">Me</a></li></ul></nav><label class=\"site-header-theme swap swap-rotate text-base-content/50 hover:text-base-content\" aria-label=\"テーマを切り替え\"><input type=\"checkbox\" class=\"theme-controller\" value=\"")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 32, "\">Me</a></li></ul></nav><label class=\"site-header-theme swap swap-rotate\" aria-label=\"テーマを切り替え\"><input type=\"checkbox\" class=\"theme-controller\" value=\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
