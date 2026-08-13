@@ -1,6 +1,9 @@
 package layout
 
-import "strings"
+import (
+	"net/url"
+	"strings"
+)
 
 // PageMeta holds document-level SEO and social metadata.
 type PageMeta struct {
@@ -11,6 +14,7 @@ type PageMeta struct {
 	OGType      string // website | article
 	Active      string
 	Wide        bool
+	Preconnect  string // origin, e.g. https://xxxx.supabase.co
 }
 
 // Site holds shared site identity used when building PageMeta.
@@ -19,6 +23,19 @@ type Site struct {
 	Description string
 	BaseURL     string
 	Author      string
+	MediaOrigin string
+}
+
+// OriginOf returns scheme://host from a URL, or empty if it is not an absolute http(s) URL.
+func OriginOf(raw string) string {
+	u, err := url.Parse(strings.TrimSpace(raw))
+	if err != nil || u.Host == "" {
+		return ""
+	}
+	if u.Scheme != "http" && u.Scheme != "https" {
+		return ""
+	}
+	return u.Scheme + "://" + u.Host
 }
 
 // TitleWithSite appends the site name when the page title is not already the site name.

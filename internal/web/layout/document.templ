@@ -40,6 +40,9 @@ templ Document(meta PageMeta) {
 			}
 			<link rel="alternate" type="application/rss+xml" title="RSS" href="/feed.xml"/>
 			<link rel="icon" href="/static/wuhu1sland-2.png" type="image/png"/>
+			if meta.Preconnect != "" {
+				<link rel="preconnect" href={ meta.Preconnect } crossorigin="anonymous"/>
+			}
 			<script src="/static/theme.js"></script>
 			<link rel="stylesheet" href="/static/app.css"/>
 			<script type="importmap">

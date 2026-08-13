@@ -35,6 +35,14 @@ func TestLayoutSiteEnvOverrides(t *testing.T) {
 	}
 }
 
+func TestLayoutSiteMediaOrigin(t *testing.T) {
+	t.Setenv("UNIGO_MEDIA_PUBLIC_BASE", "https://ydjayamxpiwowqzglxzt.supabase.co/storage/v1/object/public/images")
+	site := layoutSite(config.Default())
+	if site.MediaOrigin != "https://ydjayamxpiwowqzglxzt.supabase.co" {
+		t.Fatalf("mediaOrigin=%q", site.MediaOrigin)
+	}
+}
+
 func TestAuthConfigFromEnv(t *testing.T) {
 	t.Setenv("UNIGO_SITE_BASE_URL", "https://example.com")
 	t.Setenv("UNIGO_SUPABASE_URL", "https://abc.supabase.co")

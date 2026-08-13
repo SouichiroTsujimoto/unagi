@@ -39,6 +39,7 @@ func (handler *Handler) Show(c echo.Context) error {
 		OGImage:     handler.site.AbsoluteURL("/static/wuhu1sland-1.png"),
 		OGType:      "website",
 		Active:      "home",
+		Preconnect:  handler.site.MediaOrigin,
 	}
 	c.Response().Header().Set(echo.HeaderContentType, echo.MIMETextHTMLCharsetUTF8)
 	if err := Page(meta, handler.site, items).Render(c.Request().Context(), c.Response()); err != nil {

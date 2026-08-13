@@ -292,3 +292,39 @@ func TestRenderHTMLPendingCard(t *testing.T) {
 		t.Fatalf("missing skeleton: %s", html)
 	}
 }
+
+func TestRenderMarkdownImagesLazy(t *testing.T) {
+	t.Parallel()
+
+	html, err := Render("![one](/images/a.png)\n\n![two](/images/b.png)\n")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(html, `src="/images/a.png"`) || !strings.Contains(html, `src="/images/b.png"`) {
+		t.Fatalf("missing src in %s", html)
+	}
+	if !strings.Contains(html, `decoding="async"`) {
+		t.Fatalf("missing decoding in %s", html)
+	}
+	if strings.Count(html, `loading="lazy"`) != 1 {
+		t.Fatalf("want one lazy image, got %s", html)
+	}
+	a := strings.Index(html, `src="/images/a.png"`)
+	b := strings.Index(html, `src="/images/b.png"`)
+	lazy := strings.Index(html, `loading="lazy"`)
+	if a < 0 || b < 0 || lazy < 0 || lazy < a || lazy > b+len(`src="/images/b.png"`)+40 {
+		t.Fatalf("lazy should be on the second image: %s", html)
+	}
+}
+
+func TestRewriteImageURLs(t *testing.T) {
+	t.Parallel()
+
+	got := RewriteImageURLs("see ![](/images/dot.png)", "https://example.supabase.co/storage/v1/object/public/images")
+	if got != "see ![](https://example.supabase.co/storage/v1/object/public/images/dot.png)" {
+		t.Fatalf("got %q", got)
+	}
+	if RewriteImageURLs("none", "") != "none" {
+		t.Fatal("empty base should be a no-op")
+	}
+}

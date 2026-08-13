@@ -46,6 +46,7 @@ func (handler *Handler) Show(c echo.Context) error {
 		OGType:      "article",
 		Active:      "home",
 		Wide:        true,
+		Preconnect:  handler.site.MediaOrigin,
 	}
 	c.Response().Header().Set(echo.HeaderContentType, echo.MIMETextHTMLCharsetUTF8)
 	if err := ShowPage(meta, post).Render(c.Request().Context(), c.Response()); err != nil {

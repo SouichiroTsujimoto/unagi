@@ -16,3 +16,15 @@ func TestNavClass(t *testing.T) {
 		}
 	}
 }
+
+func TestOriginOf(t *testing.T) {
+	t.Parallel()
+
+	got := OriginOf("https://ydjayamxpiwowqzglxzt.supabase.co/storage/v1/object/public/images")
+	if got != "https://ydjayamxpiwowqzglxzt.supabase.co" {
+		t.Fatalf("got %q", got)
+	}
+	if OriginOf("/images") != "" || OriginOf("") != "" {
+		t.Fatal("relative URL should be empty")
+	}
+}

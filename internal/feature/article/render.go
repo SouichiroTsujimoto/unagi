@@ -10,9 +10,12 @@ import (
 	"github.com/microcosm-cc/bluemonday"
 	"github.com/yuin/goldmark"
 	highlighting "github.com/yuin/goldmark-highlighting/v2"
+	"github.com/yuin/goldmark/ast"
 	"github.com/yuin/goldmark/extension"
 	"github.com/yuin/goldmark/parser"
 	"github.com/yuin/goldmark/renderer/html"
+	"github.com/yuin/goldmark/text"
+	"github.com/yuin/goldmark/util"
 )
 
 var (
@@ -34,6 +37,9 @@ var markdown = goldmark.New(
 	),
 	goldmark.WithParserOptions(
 		parser.WithAutoHeadingID(),
+		parser.WithASTTransformers(
+			util.Prioritized(&imgAttrTransformer{}, 100),
+		),
 	),
 	goldmark.WithRendererOptions(
 		html.WithHardWraps(),
@@ -68,6 +74,31 @@ func Render(body string) (string, error) {
 		return "", fmt.Errorf("goldmark: %w", err)
 	}
 	return string(policy.SanitizeBytes(buf.Bytes())), nil
+}
+
+// imgAttrTransformer marks Markdown images for async decode.
+// The first image stays eager (LCP). The rest are lazy so below-the-fold
+// Storage objects do not keep the document in the loading state.
+type imgAttrTransformer struct{}
+
+func (t *imgAttrTransformer) Transform(doc *ast.Document, _ text.Reader, _ parser.Context) {
+	first := true
+	_ = ast.Walk(doc, func(n ast.Node, entering bool) (ast.WalkStatus, error) {
+		if !entering {
+			return ast.WalkContinue, nil
+		}
+		img, ok := n.(*ast.Image)
+		if !ok {
+			return ast.WalkContinue, nil
+		}
+		img.SetAttributeString("decoding", []byte("async"))
+		if first {
+			first = false
+		} else {
+			img.SetAttributeString("loading", []byte("lazy"))
+		}
+		return ast.WalkContinue, nil
+	})
 }
 
 // RewriteImageURLs replaces Markdown `/images/<key>` links with the public Storage base.

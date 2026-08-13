@@ -174,5 +174,6 @@ func layoutSite(file config.File) layout.Site {
 	if v := strings.TrimSpace(os.Getenv("UNIGO_SITE_AUTHOR")); v != "" {
 		site.Author = v
 	}
+	site.MediaOrigin = layout.OriginOf(os.Getenv("UNIGO_MEDIA_PUBLIC_BASE"))
 	return site
 }
