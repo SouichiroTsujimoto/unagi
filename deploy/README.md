@@ -33,7 +33,7 @@ Vercel FunctionやMiddleware、External Rewriteは使わない。
 
 このGitHub repositoryをVercelへimportする。値はGitHubやリポジトリのファイルには置かない。Vercel Dashboardの **Project → Settings → Environment Variables** へ入れる。
 
-1. Root Directoryはリポジトリroot(`.`)。`deploy/vercel`ではない。
+1. Root Directoryはリポジトリroot(`.`)。Settings → General で確認する。以前のproxy用`deploy/vercel`のままだと、空の静的deployになり全pathが404になる。
 2. Framework PresetはOther。`Dockerfile.vercel`があればVercelがcontainerとして検出する。
 3. Function RegionをTokyo (`hnd1`)にする。`vercel.json`の`regions`も同じ値。
 4. 下表を **Production** に入れる。Sensitiveな値はSensitiveにする。import直後に自動deployが走っても、変数を入れてから **Deployments → Redeploy** すれば反映される。
