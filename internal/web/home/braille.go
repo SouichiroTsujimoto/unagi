@@ -1,57 +1,24 @@
 package home
 
 import (
-	"hash/fnv"
 	"strconv"
 	"strings"
+
+	"github.com/SouichiroTsujimoto/unagi/internal/braille"
 )
 
-// DotGrid is a row-major on/off bitmap for the braille icon lab.
-type DotGrid struct {
-	Cols int
-	Rows int
-	On   []bool
-}
-
-func (g DotGrid) At(x, y int) bool {
-	if x < 0 || y < 0 || x >= g.Cols || y >= g.Rows {
-		return false
-	}
-	return g.On[y*g.Cols+x]
-}
-
-func (g DotGrid) Pack01() string {
-	var b strings.Builder
-	b.Grow(len(g.On))
-	for _, on := range g.On {
-		if on {
-			b.WriteByte('1')
-		} else {
-			b.WriteByte('0')
-		}
-	}
-	return b.String()
-}
+type DotGrid = braille.DotGrid
 
 func seedHash(seed string) uint32 {
-	h := fnv.New32a()
-	_, _ = h.Write([]byte(seed))
-	return h.Sum32()
+	return braille.SeedHash(seed)
 }
 
 func emptyGrid(cols, rows int) DotGrid {
 	return DotGrid{Cols: cols, Rows: rows, On: make([]bool, cols*rows)}
 }
 
-// NoiseGrid fills a deterministic pseudo-random pattern from seed (~45% on).
 func NoiseGrid(seed string, cols, rows int) DotGrid {
-	g := emptyGrid(cols, rows)
-	h := seedHash(seed)
-	for i := range g.On {
-		h = h*16777619 + uint32(i)*97 + 0x9e3779b9
-		g.On[i] = (h>>16)&0xff > 140
-	}
-	return g
+	return braille.NoiseGrid(seed, cols, rows)
 }
 
 // NoiseFrames returns evolving noise with a clear traveling scan column.

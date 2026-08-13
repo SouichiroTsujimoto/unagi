@@ -1,7 +1,9 @@
 package app
 
 import (
+	"net/url"
 	"os"
+	"strconv"
 	"strings"
 	"time"
 
@@ -28,6 +30,7 @@ type Config struct {
 	MediaPublicBase   string
 	SupabaseSecretKey string
 	ContentSyncSecret string
+	DevAdminBypass    bool
 }
 
 func LoadConfig(version string) Config {
@@ -65,6 +68,7 @@ func LoadConfig(version string) Config {
 		MediaPublicBase:   mediaPublicBase,
 		SupabaseSecretKey: strings.TrimSpace(os.Getenv("UNIGO_SUPABASE_SECRET_KEY")),
 		ContentSyncSecret: strings.TrimSpace(os.Getenv("UNIGO_CONTENT_SYNC_SECRET")),
+		DevAdminBypass:    developmentAdminBypass(siteBaseURL),
 	}
 	return cfg.withDefaults()
 }
@@ -128,4 +132,21 @@ func splitCSV(raw string) []string {
 		}
 	}
 	return values
+}
+
+func developmentAdminBypass(siteBaseURL string) bool {
+	devMode, err := strconv.ParseBool(strings.TrimSpace(os.Getenv("UNIGO_DEV_MODE")))
+	if err != nil || !devMode {
+		return false
+	}
+	parsed, err := url.Parse(siteBaseURL)
+	if err != nil || parsed.Scheme != "http" {
+		return false
+	}
+	switch strings.ToLower(parsed.Hostname()) {
+	case "localhost", "127.0.0.1", "::1":
+		return true
+	default:
+		return false
+	}
 }

@@ -1,0 +1,2 @@
+ALTER TABLE articles
+    ADD COLUMN IF NOT EXISTS og_version bigint NOT NULL DEFAULT 1;

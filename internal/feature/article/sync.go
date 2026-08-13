@@ -104,6 +104,8 @@ func syncCreate(ctx context.Context, tx bun.Tx, in SyncContent, now time.Time) e
 	row := &dbArticle{
 		Slug:       in.Slug,
 		Status:     StatusDraft,
+		OGVersion:  1,
+		OGTemplate: DefaultOGTemplate,
 		SourcePath: in.SourcePath,
 		SourceHash: in.SourceHash,
 		CreatedAt:  now,
@@ -143,7 +145,8 @@ func syncUpdate(ctx context.Context, tx bun.Tx, row dbArticle, in SyncContent, n
 	row.SourcePath = in.SourcePath
 	row.SourceHash = in.SourceHash
 	row.UpdatedAt = now
-	cols := []string{"source_path", "source_hash", "updated_at"}
+	row.OGVersion++
+	cols := []string{"source_path", "source_hash", "updated_at", "og_version"}
 	if row.Status == StatusPublished && row.PublishedRevisionID.Valid {
 		row.PublishedRevisionID = sql.NullInt64{Int64: rev.ID, Valid: true}
 		cols = append(cols, "published_revision_id")

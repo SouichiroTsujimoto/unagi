@@ -101,7 +101,7 @@ templ IndexPage(site layout.Site, items []article.Article) {
 	}
 }
 
-templ ManagePage(site layout.Site, item article.Article) {
+templ ManagePage(site layout.Site, item article.Article, ogImageURL string) {
 	@shell(site, item.Title, "admin", layout.AssetAdminEngagement) {
 		<main class="flex flex-col gap-6">
 			<header class="flex flex-wrap items-end justify-between gap-4">
@@ -125,6 +125,49 @@ templ ManagePage(site layout.Site, item article.Article) {
 					<a href="/admin" class="btn btn-ghost btn-sm">戻る</a>
 				</div>
 			</header>
+			<section class="space-y-5 border-t border-base-content/10 pt-8">
+				<header class="flex flex-wrap items-end justify-between gap-4">
+					<div class="space-y-1">
+						<h2 class="text-base font-semibold tracking-tight">記事別OGP</h2>
+						<p class="text-base-content/55 text-[15px] leading-relaxed">
+							公開中の記事で使用されるOGP画像です。Brailleは1.5倍、off dotsは非表示で生成します。
+						</p>
+					</div>
+					<form method="post" action={ templ.SafeURL("/admin/articles/" + itoa(item.ID) + "/regenerate-ogp") }>
+						<button class="btn btn-ghost btn-sm" type="submit">OGPを再生成</button>
+					</form>
+				</header>
+				<form
+					method="post"
+					action={ templ.SafeURL("/admin/articles/" + itoa(item.ID) + "/og-template") }
+					class="flex flex-wrap items-center gap-2"
+				>
+					if item.OGTemplate == article.OGTemplateEditorial {
+						<button class="btn btn-primary btn-sm" type="button" disabled>05 Editorial + Braille · 選択中</button>
+						<button class="btn btn-ghost btn-sm" type="submit" name="template" value={ article.OGTemplateDotDark }>06 Dot Grid Darkに変更</button>
+					} else {
+						<button class="btn btn-ghost btn-sm" type="submit" name="template" value={ article.OGTemplateEditorial }>05 Editorial + Brailleに変更</button>
+						<button class="btn btn-primary btn-sm" type="button" disabled>06 Dot Grid Dark · 選択中</button>
+					}
+				</form>
+				if item.Published {
+					<div class="space-y-2">
+						<p class="text-sm font-medium">公開PNG · { ogTemplateLabel(item) } · v{ itoa(item.OGVersion) }</p>
+						<a href={ templ.SafeURL(ogImageURL) } target="_blank" rel="noopener noreferrer" class="block">
+							<img
+								src={ ogImageURL }
+								alt={ item.Title + "のOGP画像" }
+								width="1200"
+								height="630"
+								class="aspect-[1200/630] w-full border border-base-content/10 object-cover"
+							/>
+						</a>
+						<p class="text-base-content/45 break-all text-xs">{ ogImageURL }</p>
+					</div>
+				} else {
+					<p class="text-base-content/45 text-sm">公開PNGは記事を公開すると取得できます。</p>
+				}
+			</section>
 			<section class="space-y-3 border-t border-base-content/10 pt-8">
 				<header class="space-y-1">
 					<h2 class="text-base font-semibold tracking-tight">ステッカーボード</h2>

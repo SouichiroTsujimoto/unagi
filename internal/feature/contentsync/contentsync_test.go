@@ -129,6 +129,7 @@ func TestDryRunAndApply(t *testing.T) {
 	if item.Published || item.Status != article.StatusDraft {
 		t.Fatalf("new article must be draft: %+v", item)
 	}
+	initialOGVersion := item.OGVersion
 	if !strings.Contains(item.BodyMD, "/images/"+key) || strings.Contains(item.BodyMD, "/images/dot.png") {
 		t.Fatalf("body not rewritten: %s", item.BodyMD)
 	}
@@ -164,6 +165,9 @@ func TestDryRunAndApply(t *testing.T) {
 	}
 	if pub.Title != "Hello v2" {
 		t.Fatalf("published revision not advanced: %+v", pub)
+	}
+	if pub.OGVersion != initialOGVersion+1 {
+		t.Fatalf("OGP version=%d want %d", pub.OGVersion, initialOGVersion+1)
 	}
 	again, err := articles.GetByID(ctx, pub.ID)
 	if err != nil {

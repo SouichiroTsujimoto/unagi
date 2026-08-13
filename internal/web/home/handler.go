@@ -38,6 +38,7 @@ func (handler *Handler) Show(c echo.Context) error {
 		Canonical:   handler.site.AbsoluteURL("/"),
 		OGImage:     handler.site.AbsoluteURL("/static/wuhu1sland-1.webp"),
 		OGType:      "website",
+		SiteName:    handler.site.Name,
 		Active:      "home",
 		Preconnect:  handler.site.MediaOrigin,
 		Assets:      layout.AssetBrailleLab,

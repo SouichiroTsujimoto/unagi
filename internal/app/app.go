@@ -11,6 +11,7 @@ import (
 	"github.com/SouichiroTsujimoto/unagi/internal/feature/engagement"
 	"github.com/SouichiroTsujimoto/unagi/internal/feature/linkcard"
 	"github.com/SouichiroTsujimoto/unagi/internal/feature/media"
+	"github.com/SouichiroTsujimoto/unagi/internal/feature/ogimage"
 	"github.com/SouichiroTsujimoto/unagi/internal/httpserver"
 	"github.com/SouichiroTsujimoto/unagi/internal/terminal"
 	"github.com/SouichiroTsujimoto/unagi/internal/web"
@@ -24,6 +25,7 @@ import (
 	"github.com/SouichiroTsujimoto/unagi/internal/web/home"
 	"github.com/SouichiroTsujimoto/unagi/internal/web/islands"
 	weblinkcard "github.com/SouichiroTsujimoto/unagi/internal/web/linkcard"
+	webogimage "github.com/SouichiroTsujimoto/unagi/internal/web/ogimage"
 	"github.com/SouichiroTsujimoto/unagi/internal/web/sitemap"
 	"github.com/SouichiroTsujimoto/unagi/static"
 )
@@ -46,6 +48,10 @@ func Run(config Config) error {
 		article.WithEmbeds(cards),
 	)
 	eng := engagement.New(database, articles)
+	ogImages, err := ogimage.New()
+	if err != nil {
+		return fmt.Errorf("OGP images: %w", err)
+	}
 
 	objectStore, err := openObjectStore(config)
 	if err != nil {
@@ -65,6 +71,9 @@ func Run(config Config) error {
 	}
 
 	site := config.Site
+	if config.DevAdminBypass {
+		log.Warn("admin authentication bypass enabled for local development")
+	}
 
 	handler := web.New(web.Handlers{
 		Home:        home.New(articles, site, log),
@@ -72,10 +81,11 @@ func Run(config Config) error {
 		About:       about.New(site, log),
 		Feed:        feed.New(articles, site, log),
 		Sitemap:     sitemap.New(articles, site, log),
-		Admin:       admin.New(auth, articles, eng, site, log),
+		Admin:       admin.New(auth, articles, eng, ogImages, site, log, config.DevAdminBypass),
 		ContentSync: webcontentsync.New(contentSync, log),
 		Engagement:  webengagement.New(eng, auth, log),
 		LinkCard:    weblinkcard.New(cards, log),
+		OGImage:     webogimage.New(ogImages, articles, log),
 		Auth:        webauth.New(auth, site, log),
 	}, static.FS(), islands.FS())
 

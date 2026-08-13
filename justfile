@@ -80,6 +80,34 @@ supabase-stop:
 supabase-status:
     supabase status -o env
 
+# Clone the canonical content repository when absent, then sync its full snapshot
+# into the running local app. New articles remain drafts until published in /admin.
+content-sync-local content_root="../unagi-content":
+    #!/usr/bin/env bash
+    set -euo pipefail
+    content_root="{{content_root}}"
+    if ! curl -fsS "http://localhost:8080/healthz" >/dev/null; then
+      echo "local app is not running; start it with: just run" >&2
+      exit 1
+    fi
+    if [[ ! -d "$content_root" ]]; then
+      if ! command -v gh >/dev/null 2>&1; then
+        echo "gh is required to clone SouichiroTsujimoto/unagi-content" >&2
+        exit 1
+      fi
+      gh repo clone SouichiroTsujimoto/unagi-content "$content_root"
+    fi
+    if [[ ! -d "$content_root/articles" ]]; then
+      echo "content repository has no articles directory: $content_root" >&2
+      exit 1
+    fi
+    commit_sha="$(git -C "$content_root" rev-parse HEAD)"
+    UNIGO_CONTENT_SYNC_SECRET="unagi-local-content-sync-v1" \
+    UNIGO_SITE_BASE_URL="http://localhost:8080" \
+    GITHUB_REPOSITORY="SouichiroTsujimoto/unagi-content" \
+    GITHUB_SHA="$commit_sha" \
+      python3 deploy/content-sync/scripts/content_sync.py sync --root "$content_root"
+
 # Generate custom listen-banner ASCII from [banner].image (ascii-image-converter).
 # No-op when image is unset. Writes sibling <name>-ascii.txt (+ .sha256); commit both.
 logo:

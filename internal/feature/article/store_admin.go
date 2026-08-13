@@ -28,10 +28,12 @@ func (a *Articles) Create(ctx context.Context, in SaveInput) (Article, error) {
 	var created Article
 	err = a.db.RunInTx(ctx, nil, func(ctx context.Context, tx bun.Tx) error {
 		row := &dbArticle{
-			Slug:      in.Slug,
-			Status:    StatusDraft,
-			CreatedAt: now,
-			UpdatedAt: now,
+			Slug:       in.Slug,
+			Status:     StatusDraft,
+			OGVersion:  1,
+			OGTemplate: DefaultOGTemplate,
+			CreatedAt:  now,
+			UpdatedAt:  now,
 		}
 		if _, err := tx.NewInsert().Model(row).Exec(ctx); err != nil {
 			return fmt.Errorf("insert article: %w", err)
@@ -62,6 +64,8 @@ func (a *Articles) Create(ctx context.Context, in SaveInput) (Article, error) {
 			Slug:       row.Slug,
 			Status:     row.Status,
 			RevisionID: rev.ID,
+			OGVersion:  row.OGVersion,
+			OGTemplate: row.OGTemplate,
 			Title:      rev.Title,
 			Emoji:      rev.Emoji,
 			Type:       rev.Type,
@@ -121,6 +125,7 @@ func (a *Articles) SaveRevision(ctx context.Context, id int64, in SaveInput) (Ar
 			return fmt.Errorf("insert revision: %w", err)
 		}
 		row.UpdatedAt = now
+		row.OGVersion++
 		if in.PublishedAt.IsZero() {
 			row.PublishedAt = sql.NullTime{}
 		} else {
@@ -128,7 +133,7 @@ func (a *Articles) SaveRevision(ctx context.Context, id int64, in SaveInput) (Ar
 		}
 		if _, err := tx.NewUpdate().
 			Model(&row).
-			Column("slug", "updated_at", "published_at").
+			Column("slug", "updated_at", "published_at", "og_version").
 			WherePK().
 			Exec(ctx); err != nil {
 			return err
@@ -141,6 +146,8 @@ func (a *Articles) SaveRevision(ctx context.Context, id int64, in SaveInput) (Ar
 			Slug:       row.Slug,
 			Status:     row.Status,
 			RevisionID: rev.ID,
+			OGVersion:  row.OGVersion,
+			OGTemplate: row.OGTemplate,
 			Title:      rev.Title,
 			Emoji:      rev.Emoji,
 			Type:       rev.Type,
@@ -160,6 +167,64 @@ func (a *Articles) SaveRevision(ctx context.Context, id int64, in SaveInput) (Ar
 		return Article{}, err
 	}
 	return saved, nil
+}
+
+// BumpOGVersion changes the public OGP URL so the image is rendered again.
+func (a *Articles) BumpOGVersion(ctx context.Context, articleID int64) (Article, error) {
+	res, err := a.db.NewUpdate().
+		Model((*dbArticle)(nil)).
+		Set("og_version = og_version + 1").
+		Where("id = ?", articleID).
+		Exec(ctx)
+	if err != nil {
+		return Article{}, fmt.Errorf("bump OGP version: %w", err)
+	}
+	n, err := res.RowsAffected()
+	if err != nil {
+		return Article{}, err
+	}
+	if n == 0 {
+		return Article{}, ErrNotFound
+	}
+	return a.GetByID(ctx, articleID)
+}
+
+// SetOGTemplate selects the article OGP design and invalidates its cached image.
+func (a *Articles) SetOGTemplate(ctx context.Context, articleID int64, template string) (Article, error) {
+	switch template {
+	case OGTemplateEditorial, OGTemplateDotDark:
+	default:
+		return Article{}, fmt.Errorf("%w: invalid OGP template %q", ErrInvalidInput, template)
+	}
+
+	res, err := a.db.NewUpdate().
+		Model((*dbArticle)(nil)).
+		Set("og_template = ?", template).
+		Set("og_version = og_version + 1").
+		Where("id = ?", articleID).
+		Where("og_template <> ?", template).
+		Exec(ctx)
+	if err != nil {
+		return Article{}, fmt.Errorf("set OGP template: %w", err)
+	}
+	n, err := res.RowsAffected()
+	if err != nil {
+		return Article{}, err
+	}
+	if n == 0 {
+		var exists bool
+		exists, err = a.db.NewSelect().
+			Model((*dbArticle)(nil)).
+			Where("id = ?", articleID).
+			Exists(ctx)
+		if err != nil {
+			return Article{}, err
+		}
+		if !exists {
+			return Article{}, ErrNotFound
+		}
+	}
+	return a.GetByID(ctx, articleID)
 }
 
 // Publish marks a revision as the published one.

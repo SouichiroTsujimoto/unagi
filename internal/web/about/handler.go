@@ -23,6 +23,7 @@ func (handler *Handler) Show(c echo.Context) error {
 		Canonical:   handler.site.AbsoluteURL("/about"),
 		OGImage:     handler.site.AbsoluteURL("/static/wuhu1sland-2.webp"),
 		OGType:      "website",
+		SiteName:    handler.site.Name,
 		Active:      "about",
 	}
 	c.Response().Header().Set(echo.HeaderContentType, echo.MIMETextHTMLCharsetUTF8)

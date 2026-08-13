@@ -10,6 +10,7 @@ import (
 	"github.com/SouichiroTsujimoto/unagi/internal/feature/article"
 	featureauth "github.com/SouichiroTsujimoto/unagi/internal/feature/auth"
 	"github.com/SouichiroTsujimoto/unagi/internal/feature/engagement"
+	"github.com/SouichiroTsujimoto/unagi/internal/feature/ogimage"
 	"github.com/SouichiroTsujimoto/unagi/internal/web/layout"
 	"github.com/SouichiroTsujimoto/unagi/internal/web/session"
 	"github.com/a-h/templ"
@@ -20,16 +21,21 @@ type Handler struct {
 	auth       *featureauth.Auth
 	articles   *article.Articles
 	engagement *engagement.Engagement
+	ogImages   *ogimage.Images
 	site       layout.Site
 	log        *slog.Logger
+	devBypass  bool
 }
 
-func New(auth *featureauth.Auth, articles *article.Articles, eng *engagement.Engagement, site layout.Site, log *slog.Logger) *Handler {
-	return &Handler{auth: auth, articles: articles, engagement: eng, site: site, log: log}
+func New(auth *featureauth.Auth, articles *article.Articles, eng *engagement.Engagement, ogImages *ogimage.Images, site layout.Site, log *slog.Logger, devBypass bool) *Handler {
+	return &Handler{auth: auth, articles: articles, engagement: eng, ogImages: ogImages, site: site, log: log, devBypass: devBypass}
 }
 
 func (h *Handler) RequireAuth(next echo.HandlerFunc) echo.HandlerFunc {
 	return func(c echo.Context) error {
+		if h.devBypass {
+			return next(c)
+		}
 		user, err := h.userFromRequest(c)
 		if err != nil {
 			if wantsJSON(c) {
@@ -80,6 +86,9 @@ func (h *Handler) render(c echo.Context, component templ.Component) error {
 }
 
 func (h *Handler) LoginPage(c echo.Context) error {
+	if h.devBypass {
+		return c.Redirect(http.StatusSeeOther, "/admin")
+	}
 	user, err := h.userFromRequest(c)
 	if err == nil && user.IsAdmin {
 		return c.Redirect(http.StatusSeeOther, "/admin")
@@ -116,7 +125,7 @@ func (h *Handler) ArticlePage(c echo.Context) error {
 	if err != nil {
 		return err
 	}
-	return h.render(c, ManagePage(h.site, item))
+	return h.render(c, ManagePage(h.site, item, h.site.AbsoluteURL(ogimage.Path(item))))
 }
 
 func (h *Handler) Logout(c echo.Context) error {

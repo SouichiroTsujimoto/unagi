@@ -36,6 +36,7 @@ dsn = "postgresql://toml"
 	t.Setenv("UNIGO_ALLOWED_ORIGINS", "https://ignored.example")
 	t.Setenv("UNIGO_SESSION_TTL", "1h")
 	t.Setenv("UNIGO_SECURE_COOKIES", "false")
+	t.Setenv("UNIGO_DEV_MODE", "true")
 
 	cfg := LoadConfig("1.2.3")
 	if cfg.DB.DSN != "postgresql://runtime" {
@@ -58,6 +59,36 @@ dsn = "postgresql://toml"
 	}
 	if len(cfg.Auth.AdminUserIDs) != 2 || cfg.ContentSyncSecret != "sync-secret" {
 		t.Fatalf("admins=%v sync=%q", cfg.Auth.AdminUserIDs, cfg.ContentSyncSecret)
+	}
+	if cfg.DevAdminBypass {
+		t.Fatal("development admin bypass enabled for production URL")
+	}
+}
+
+func TestDevelopmentAdminBypassRequiresDevModeAndLoopbackHTTP(t *testing.T) {
+	t.Setenv("UNIGO_DEV_MODE", "true")
+	for _, baseURL := range []string{
+		"http://localhost:8080",
+		"http://127.0.0.1:8080",
+		"http://[::1]:8080",
+	} {
+		if !developmentAdminBypass(baseURL) {
+			t.Fatalf("bypass disabled for %q", baseURL)
+		}
+	}
+	for _, baseURL := range []string{
+		"https://localhost:8080",
+		"https://example.com",
+		"http://example.com",
+	} {
+		if developmentAdminBypass(baseURL) {
+			t.Fatalf("bypass enabled for %q", baseURL)
+		}
+	}
+
+	t.Setenv("UNIGO_DEV_MODE", "false")
+	if developmentAdminBypass("http://localhost:8080") {
+		t.Fatal("bypass enabled outside development mode")
 	}
 }
 

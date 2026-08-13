@@ -1,6 +1,10 @@
 package layout
 
-import "github.com/SouichiroTsujimoto/unagi/internal/web/css"
+import (
+	"strconv"
+
+	"github.com/SouichiroTsujimoto/unagi/internal/web/css"
+)
 
 // Document is the shared HTML shell for full-page routes.
 templ Document(meta PageMeta) {
@@ -32,11 +36,29 @@ templ Document(meta PageMeta) {
 			}
 			if meta.OGImage != "" {
 				<meta property="og:image" content={ meta.OGImage }/>
+				if meta.OGImageWidth > 0 {
+					<meta property="og:image:width" content={ strconv.Itoa(meta.OGImageWidth) }/>
+				}
+				if meta.OGImageHeight > 0 {
+					<meta property="og:image:height" content={ strconv.Itoa(meta.OGImageHeight) }/>
+				}
+				if meta.OGImageAlt != "" {
+					<meta property="og:image:alt" content={ meta.OGImageAlt }/>
+				}
 			}
-			<meta name="twitter:card" content="summary"/>
+			if meta.SiteName != "" {
+				<meta property="og:site_name" content={ meta.SiteName }/>
+			}
+			<meta name="twitter:card" content="summary_large_image"/>
 			<meta name="twitter:title" content={ meta.Title }/>
 			if meta.Description != "" {
 				<meta name="twitter:description" content={ meta.Description }/>
+			}
+			if meta.OGImage != "" {
+				<meta name="twitter:image" content={ meta.OGImage }/>
+				if meta.OGImageAlt != "" {
+					<meta name="twitter:image:alt" content={ meta.OGImageAlt }/>
+				}
 			}
 			<link rel="alternate" type="application/rss+xml" title="RSS" href="/feed.xml"/>
 			<link rel="icon" href="/static/wuhu1sland-2.webp" type="image/webp"/>

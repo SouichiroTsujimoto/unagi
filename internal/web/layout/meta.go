@@ -29,15 +29,19 @@ func (a Assets) NeedsIsLand() bool {
 
 // PageMeta holds document-level SEO and social metadata.
 type PageMeta struct {
-	Title       string
-	Description string
-	Canonical   string
-	OGImage     string
-	OGType      string // website | article
-	Active      string
-	Wide        bool
-	Preconnect  string // origin, e.g. https://xxxx.supabase.co
-	Assets      Assets
+	Title         string
+	Description   string
+	Canonical     string
+	OGImage       string
+	OGImageAlt    string
+	OGImageWidth  int
+	OGImageHeight int
+	OGType        string // website | article
+	SiteName      string
+	Active        string
+	Wide          bool
+	Preconnect    string // origin, e.g. https://xxxx.supabase.co
+	Assets        Assets
 }
 
 // Site holds shared site identity used when building PageMeta.

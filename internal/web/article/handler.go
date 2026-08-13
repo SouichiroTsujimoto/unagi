@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/SouichiroTsujimoto/unagi/internal/feature/article"
+	"github.com/SouichiroTsujimoto/unagi/internal/feature/ogimage"
 	"github.com/SouichiroTsujimoto/unagi/internal/web/layout"
 	"github.com/labstack/echo/v4"
 )
@@ -39,14 +40,18 @@ func (handler *Handler) Show(c echo.Context) error {
 	}
 
 	meta := layout.PageMeta{
-		Title:       handler.site.TitleWithSite(post.Title),
-		Description: firstNonEmpty(post.Summary, handler.site.Description),
-		Canonical:   handler.site.AbsoluteURL(post.Path()),
-		OGImage:     handler.site.AbsoluteURL("/static/wuhu1sland-1.webp"),
-		OGType:      "article",
-		Active:      "home",
-		Wide:        true,
-		Preconnect:  handler.site.MediaOrigin,
+		Title:         handler.site.TitleWithSite(post.Title),
+		Description:   firstNonEmpty(post.Summary, handler.site.Description),
+		Canonical:     handler.site.AbsoluteURL(post.Path()),
+		OGImage:       handler.site.AbsoluteURL(ogimage.Path(post)),
+		OGImageAlt:    ogimage.Alt(post),
+		OGImageWidth:  ogimage.Width,
+		OGImageHeight: ogimage.Height,
+		OGType:        "article",
+		SiteName:      handler.site.Name,
+		Active:        "home",
+		Wide:          true,
+		Preconnect:    handler.site.MediaOrigin,
 		Assets: layout.AssetArticleShare |
 			layout.AssetArticleLinkcards |
 			layout.AssetArticleEngagement,
@@ -83,6 +88,7 @@ func (handler *Handler) ListByTag(c echo.Context) error {
 		Canonical:   handler.site.AbsoluteURL(article.TopicPath(tag)),
 		OGImage:     handler.site.AbsoluteURL("/static/wuhu1sland-1.webp"),
 		OGType:      "website",
+		SiteName:    handler.site.Name,
 		Active:      "home",
 	}
 	c.Response().Header().Set(echo.HeaderContentType, echo.MIMETextHTMLCharsetUTF8)

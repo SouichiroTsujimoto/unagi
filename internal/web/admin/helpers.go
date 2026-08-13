@@ -16,3 +16,10 @@ func statusLabel(item article.Article) string {
 	}
 	return "下書き"
 }
+
+func ogTemplateLabel(item article.Article) string {
+	if item.OGTemplate == article.OGTemplateEditorial {
+		return "05 Editorial + Braille"
+	}
+	return "06 Dot Grid Dark"
+}

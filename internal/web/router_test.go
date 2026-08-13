@@ -24,6 +24,7 @@ import (
 	"github.com/SouichiroTsujimoto/unagi/internal/feature/engagement"
 	"github.com/SouichiroTsujimoto/unagi/internal/feature/linkcard"
 	"github.com/SouichiroTsujimoto/unagi/internal/feature/media"
+	"github.com/SouichiroTsujimoto/unagi/internal/feature/ogimage"
 	"github.com/SouichiroTsujimoto/unagi/internal/web"
 	"github.com/SouichiroTsujimoto/unagi/internal/web/about"
 	"github.com/SouichiroTsujimoto/unagi/internal/web/admin"
@@ -36,6 +37,7 @@ import (
 	"github.com/SouichiroTsujimoto/unagi/internal/web/islands"
 	"github.com/SouichiroTsujimoto/unagi/internal/web/layout"
 	weblinkcard "github.com/SouichiroTsujimoto/unagi/internal/web/linkcard"
+	webogimage "github.com/SouichiroTsujimoto/unagi/internal/web/ogimage"
 	"github.com/SouichiroTsujimoto/unagi/internal/web/sitemap"
 	"github.com/SouichiroTsujimoto/unagi/static"
 	"github.com/golang-jwt/jwt/v5"
@@ -43,12 +45,20 @@ import (
 )
 
 func newTestRouter(t *testing.T) (*echoRouter, *article.Articles, *engagement.Engagement, *featureauth.Auth) {
+	return newTestRouterWithDevBypass(t, false)
+}
+
+func newTestRouterWithDevBypass(t *testing.T, devBypass bool) (*echoRouter, *article.Articles, *engagement.Engagement, *featureauth.Auth) {
 	t.Helper()
 	database := db.OpenTest(t)
 
 	cards := linkcard.New(database)
 	articles := article.New(database, article.WithEmbeds(cards))
 	eng := engagement.New(database, articles)
+	ogImages, err := ogimage.New()
+	if err != nil {
+		t.Fatal(err)
+	}
 	ctx := context.Background()
 	created, err := articles.Create(ctx, article.SaveInput{
 		Slug:        "hello-unagi",
@@ -108,10 +118,11 @@ func newTestRouter(t *testing.T) (*echoRouter, *article.Articles, *engagement.En
 		About:       about.New(site, log),
 		Feed:        feed.New(articles, site, log),
 		Sitemap:     sitemap.New(articles, site, log),
-		Admin:       admin.New(auth, articles, eng, site, log),
+		Admin:       admin.New(auth, articles, eng, ogImages, site, log, devBypass),
 		ContentSync: webcontentsync.New(contentSync, log),
 		Engagement:  webengagement.New(eng, auth, log),
 		LinkCard:    weblinkcard.New(cards, log),
+		OGImage:     webogimage.New(ogImages, articles, log),
 		Auth:        webauth.New(auth, site, log),
 	}, static.FS(), islands.FS())
 	return &echoRouter{handler: router, jwtKey: priv}, articles, eng, auth
@@ -136,7 +147,7 @@ func TestBlogRoutes(t *testing.T) {
 		contains []string
 	}{
 		{name: "home", path: "/", status: 200, contains: []string{"<title>Posts · unagi</title>", "Hello from", "wuhu1sland", "unagiへようこそ", `aria-label="unagi トップへ"`, `/static/wuhu1sland-1.webp`}},
-		{name: "article", path: "/articles/hello-unagi", status: 200, contains: []string{"Hello", "<strong>unagi</strong>", "article-engagement", `slug="hello-unagi"`, "article-linkcards"}},
+		{name: "article", path: "/articles/hello-unagi", status: 200, contains: []string{"Hello", "<strong>unagi</strong>", "article-engagement", `slug="hello-unagi"`, "article-linkcards", `/og/articles/hello-unagi/`, `twitter:card" content="summary_large_image`, `og:image:width" content="1200`}},
 		{name: "missing", path: "/articles/missing", status: 404},
 		{name: "tag", path: "/tags/Go", status: 200, contains: []string{"unagiへようこそ"}},
 		{name: "unknown tag", path: "/tags/unknown", status: 404},
@@ -165,6 +176,74 @@ func TestBlogRoutes(t *testing.T) {
 				}
 			}
 		})
+	}
+}
+
+func TestDevAdminBypass(t *testing.T) {
+	router, _, _, _ := newTestRouterWithDevBypass(t, true)
+
+	req := httptest.NewRequest(http.MethodGet, "/admin", nil)
+	rec := httptest.NewRecorder()
+	router.ServeHTTP(rec, req)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("admin status=%d body=%s", rec.Code, rec.Body.String())
+	}
+
+	req = httptest.NewRequest(http.MethodGet, "/admin/login", nil)
+	rec = httptest.NewRecorder()
+	router.ServeHTTP(rec, req)
+	if rec.Code != http.StatusSeeOther || rec.Header().Get("Location") != "/admin" {
+		t.Fatalf("login status=%d location=%q", rec.Code, rec.Header().Get("Location"))
+	}
+
+	req = httptest.NewRequest(http.MethodPost, "/admin/articles/1/regenerate-ogp", nil)
+	req.Header.Set("Origin", "https://evil.example")
+	rec = httptest.NewRecorder()
+	router.ServeHTTP(rec, req)
+	if rec.Code != http.StatusForbidden {
+		t.Fatalf("invalid origin status=%d body=%s", rec.Code, rec.Body.String())
+	}
+
+	req = httptest.NewRequest(http.MethodPost, "/admin/articles/1/regenerate-ogp", nil)
+	req.Header.Set("Origin", "http://localhost:8080")
+	rec = httptest.NewRecorder()
+	router.ServeHTTP(rec, req)
+	if rec.Code != http.StatusSeeOther {
+		t.Fatalf("valid origin status=%d body=%s", rec.Code, rec.Body.String())
+	}
+}
+
+func TestArticleOGImage(t *testing.T) {
+	router, articles, _, _ := newTestRouter(t)
+	item, err := articles.Get(context.Background(), "hello-unagi", time.Now())
+	if err != nil {
+		t.Fatal(err)
+	}
+	imagePath := ogimage.Path(item)
+	req := httptest.NewRequest(http.MethodGet, imagePath, nil)
+	rec := httptest.NewRecorder()
+	router.ServeHTTP(rec, req)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status=%d body=%s", rec.Code, rec.Body.String())
+	}
+	if got := rec.Header().Get("Content-Type"); got != "image/png" {
+		t.Fatalf("content-type=%q", got)
+	}
+	if got := rec.Header().Get("Cache-Control"); got != "public, max-age=31536000, immutable" {
+		t.Fatalf("cache-control=%q", got)
+	}
+	if got := rec.Header().Get("Vercel-CDN-Cache-Control"); got != "max-age=31536000" {
+		t.Fatalf("vercel cache-control=%q", got)
+	}
+	if !bytes.HasPrefix(rec.Body.Bytes(), []byte("\x89PNG\r\n\x1a\n")) {
+		t.Fatal("missing PNG signature")
+	}
+
+	req = httptest.NewRequest(http.MethodGet, "/og/articles/hello-unagi/old.png", nil)
+	rec = httptest.NewRecorder()
+	router.ServeHTTP(rec, req)
+	if rec.Code != http.StatusNotFound {
+		t.Fatalf("old version status=%d", rec.Code)
 	}
 }
 
@@ -491,12 +570,55 @@ func TestAdminEditorRoutesGoneAndPublishRemains(t *testing.T) {
 	body := rec.Body.String()
 	if rec.Code != http.StatusOK ||
 		!strings.Contains(body, "コメント") ||
+		!strings.Contains(body, "OGPを再生成") ||
+		!strings.Contains(body, "05 Editorial + Brailleに変更") ||
+		!strings.Contains(body, "06 Dot Grid Dark · 選択中") ||
 		!strings.Contains(body, "/static/vendor/is-land.js") ||
 		!strings.Contains(body, `import="/static/islands/admin-comments.js"`) ||
 		!strings.Contains(body, `import="/static/islands/admin-stickers.js"`) ||
 		strings.Contains(body, "article-editor") ||
 		strings.Contains(body, "article-engagement.js") {
 		t.Fatalf("manage page status=%d body=%s", rec.Code, rec.Body.String())
+	}
+
+	before, err := articles.GetByID(context.Background(), 1)
+	if err != nil {
+		t.Fatal(err)
+	}
+	req = httptest.NewRequest(http.MethodPost, "/admin/articles/1/regenerate-ogp", nil)
+	req.Header.Set("Origin", "http://localhost:8080")
+	req.Header.Set("Cookie", admin)
+	rec = httptest.NewRecorder()
+	router.ServeHTTP(rec, req)
+	if rec.Code != http.StatusSeeOther {
+		t.Fatalf("regenerate OGP status=%d body=%s", rec.Code, rec.Body.String())
+	}
+	after, err := articles.GetByID(context.Background(), 1)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if after.OGVersion != before.OGVersion+1 {
+		t.Fatalf("OGP version=%d want %d", after.OGVersion, before.OGVersion+1)
+	}
+
+	req = httptest.NewRequest(http.MethodPost, "/admin/articles/1/og-template", strings.NewReader("template=editorial"))
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	req.Header.Set("Origin", "http://localhost:8080")
+	req.Header.Set("Cookie", admin)
+	rec = httptest.NewRecorder()
+	router.ServeHTTP(rec, req)
+	if rec.Code != http.StatusSeeOther {
+		t.Fatalf("set OGP template status=%d body=%s", rec.Code, rec.Body.String())
+	}
+	editorial, err := articles.GetByID(context.Background(), 1)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if editorial.OGTemplate != article.OGTemplateEditorial {
+		t.Fatalf("OGP template=%q", editorial.OGTemplate)
+	}
+	if editorial.OGVersion != after.OGVersion+1 {
+		t.Fatalf("OGP version=%d want %d", editorial.OGVersion, after.OGVersion+1)
 	}
 
 	req = httptest.NewRequest(http.MethodPost, "/api/admin/articles/1/unpublish", nil)

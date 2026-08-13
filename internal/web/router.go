@@ -13,20 +13,22 @@ import (
 	"github.com/SouichiroTsujimoto/unagi/internal/web/feed"
 	"github.com/SouichiroTsujimoto/unagi/internal/web/home"
 	"github.com/SouichiroTsujimoto/unagi/internal/web/linkcard"
+	webogimage "github.com/SouichiroTsujimoto/unagi/internal/web/ogimage"
 	"github.com/SouichiroTsujimoto/unagi/internal/web/sitemap"
 	"github.com/labstack/echo/v4"
 )
 
 type Handlers struct {
-	Home       *home.Handler
-	Article    *webarticle.Handler
-	About      *about.Handler
-	Feed       *feed.Handler
-	Sitemap    *sitemap.Handler
+	Home        *home.Handler
+	Article     *webarticle.Handler
+	About       *about.Handler
+	Feed        *feed.Handler
+	Sitemap     *sitemap.Handler
 	Admin       *admin.Handler
 	ContentSync *webcontentsync.Handler
 	Engagement  *engagement.Handler
 	LinkCard    *linkcard.Handler
+	OGImage     *webogimage.Handler
 	Auth        *webauth.Handler
 }
 
@@ -44,6 +46,7 @@ func New(h Handlers, staticFiles, islandFiles fs.FS) *echo.Echo {
 
 	router.GET("/", h.Home.Show)
 	router.GET("/articles/:slug", h.Article.Show)
+	router.GET("/og/articles/:slug/:version", h.OGImage.Show)
 	router.GET("/tags/:tag", h.Article.ListByTag)
 	router.GET("/about", h.About.Show)
 	router.GET("/feed.xml", h.Feed.Show)
@@ -68,6 +71,8 @@ func New(h Handlers, staticFiles, islandFiles fs.FS) *echo.Echo {
 	adminPages.GET("/articles/:id", h.Admin.ArticlePage)
 	adminPages.POST("/articles/:id/publish", h.Admin.PublishArticle)
 	adminPages.POST("/articles/:id/unpublish", h.Admin.UnpublishArticle)
+	adminPages.POST("/articles/:id/regenerate-ogp", h.Admin.RegenerateOGP)
+	adminPages.POST("/articles/:id/og-template", h.Admin.SetOGTemplate)
 	adminPages.POST("/logout", h.Admin.Logout)
 
 	adminAPI := router.Group("/api/admin", h.Admin.RequireAuth, h.Admin.RequireOrigin)

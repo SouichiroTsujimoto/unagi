@@ -50,6 +50,47 @@ func (h *Handler) UnpublishArticle(c echo.Context) error {
 	return c.Redirect(http.StatusSeeOther, "/admin")
 }
 
+func (h *Handler) RegenerateOGP(c echo.Context) error {
+	id, err := strconv.ParseInt(c.Param("id"), 10, 64)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, "invalid id")
+	}
+	item, err := h.articles.BumpOGVersion(c.Request().Context(), id)
+	if errors.Is(err, article.ErrNotFound) {
+		return echo.NewHTTPError(http.StatusNotFound, "not found")
+	}
+	if err != nil {
+		h.log.Error("regenerate article OGP", "err", err, "article_id", id)
+		return echo.NewHTTPError(http.StatusInternalServerError, "internal error")
+	}
+	if wantsJSON(c) {
+		return c.JSON(http.StatusOK, item)
+	}
+	return c.Redirect(http.StatusSeeOther, "/admin/articles/"+strconv.FormatInt(id, 10))
+}
+
+func (h *Handler) SetOGTemplate(c echo.Context) error {
+	id, err := strconv.ParseInt(c.Param("id"), 10, 64)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, "invalid id")
+	}
+	item, err := h.articles.SetOGTemplate(c.Request().Context(), id, c.FormValue("template"))
+	if errors.Is(err, article.ErrNotFound) {
+		return echo.NewHTTPError(http.StatusNotFound, "not found")
+	}
+	if errors.Is(err, article.ErrInvalidInput) {
+		return echo.NewHTTPError(http.StatusBadRequest, "invalid OGP template")
+	}
+	if err != nil {
+		h.log.Error("set article OGP template", "err", err, "article_id", id)
+		return echo.NewHTTPError(http.StatusInternalServerError, "internal error")
+	}
+	if wantsJSON(c) {
+		return c.JSON(http.StatusOK, item)
+	}
+	return c.Redirect(http.StatusSeeOther, "/admin/articles/"+strconv.FormatInt(id, 10))
+}
+
 func (h *Handler) ListStickers(c echo.Context) error {
 	id, err := strconv.ParseInt(c.Param("id"), 10, 64)
 	if err != nil {

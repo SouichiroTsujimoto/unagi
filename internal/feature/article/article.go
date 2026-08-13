@@ -33,6 +33,10 @@ var (
 const (
 	StatusDraft     = "draft"
 	StatusPublished = "published"
+
+	OGTemplateEditorial = "editorial"
+	OGTemplateDotDark   = "dot-dark"
+	DefaultOGTemplate   = OGTemplateDotDark
 )
 
 // Article is the public/admin view of a post at a specific revision.
@@ -41,6 +45,8 @@ type Article struct {
 	Slug        string
 	Status      string
 	RevisionID  int64
+	OGVersion   int64
+	OGTemplate  string
 	Title       string
 	Emoji       string
 	Type        string
@@ -62,6 +68,8 @@ type dbArticle struct {
 	Status              string        `bun:",notnull"`
 	PublishedRevisionID sql.NullInt64 `bun:"published_revision_id"`
 	PublishedAt         sql.NullTime  `bun:"published_at"`
+	OGVersion           int64         `bun:"og_version,notnull"`
+	OGTemplate          string        `bun:"og_template,notnull"`
 	SourcePath          string        `bun:"source_path,nullzero"`
 	SourceHash          string        `bun:"source_hash,nullzero"`
 	CreatedAt           time.Time     `bun:",notnull"`

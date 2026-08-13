@@ -16,6 +16,18 @@
 DB DSNやSupabase secret keyは記事リポジトリに置かない。
 repository名はActions標準の`GITHUB_REPOSITORY`を使うため、追加variableは不要。
 
+## ローカル同期
+
+`supabase start`と`just run`を起動した状態で、アプリリポジトリから次を実行する。
+
+```sh
+just content-sync-local
+```
+
+初回は公開リポジトリ`SouichiroTsujimoto/unagi-content`を`../unagi-content`へcloneし、以後はその作業コピーを全量同期する。別の配置を使う場合は`just content-sync-local /path/to/unagi-content`とする。
+
+ローカル同期は`cmd/dev`だけが持つ固定HMAC値を使う。本番の`UNIGO_CONTENT_SYNC_SECRET`は参照しない。新規記事は下書きになるため、同期後に`http://localhost:8080/admin`で確認対象の記事を公開する。記事を更新したい場合はcontent repository側でpullしてから再実行する。
+
 ## 契約
 
 - frontmatterは`title`、`emoji`、`type`、`topics`だけ。`published` / `published_at`は使わない。

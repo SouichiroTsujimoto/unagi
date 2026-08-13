@@ -1,6 +1,6 @@
 module github.com/SouichiroTsujimoto/unagi
 
-go 1.26.0
+go 1.26.4
 
 require (
 	github.com/TheZoraiz/ascii-image-converter v1.13.1
@@ -10,6 +10,7 @@ require (
 	github.com/charmbracelet/bubbletea v1.3.6
 	github.com/charmbracelet/huh v1.0.0
 	github.com/charmbracelet/lipgloss v1.1.0
+	github.com/go-opentype/fonts v0.8.0
 	github.com/golang-jwt/jwt/v5 v5.2.2
 	github.com/gookit/color v1.4.2
 	github.com/jackc/pgx/v5 v5.10.0
@@ -23,6 +24,7 @@ require (
 	github.com/uptrace/bun/dialect/pgdialect v1.2.18
 	github.com/yuin/goldmark v1.8.5
 	github.com/yuin/goldmark-highlighting/v2 v2.0.0-20230729083705-37449abec8cc
+	golang.org/x/image v0.43.0
 	golang.org/x/net v0.56.0
 	golang.org/x/term v0.45.0
 )
@@ -100,7 +102,6 @@ require (
 	github.com/vmihailenco/tagparser/v2 v2.0.0 // indirect
 	github.com/xo/terminfo v0.0.0-20220910002029-abceb7e1c41e // indirect
 	golang.org/x/crypto v0.53.0 // indirect
-	golang.org/x/image v0.43.0 // indirect
 	golang.org/x/mod v0.37.0 // indirect
 	golang.org/x/sync v0.21.0 // indirect
 	golang.org/x/sys v0.47.0 // indirect

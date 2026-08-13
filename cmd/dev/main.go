@@ -13,11 +13,21 @@ import (
 	"github.com/SouichiroTsujimoto/unagi/internal/terminal"
 )
 
+const localContentSyncSecret = "unagi-local-content-sync-v1"
+
 // Development launcher: optional Bubble Tea TUI, or plain Air with streaming logs.
 // Precedence for logo/tui/db: CLI flag > UNIGO_* env > .env > .unigo.toml > defaults.
 // Production bin/server does not load .env.
 func main() {
 	loadDotEnv()
+	if err := os.Setenv("UNIGO_DEV_MODE", "true"); err != nil {
+		fmt.Fprintf(os.Stderr, "dev: set development mode: %v\n", err)
+		os.Exit(1)
+	}
+	if err := os.Setenv("UNIGO_CONTENT_SYNC_SECRET", localContentSyncSecret); err != nil {
+		fmt.Fprintf(os.Stderr, "dev: set local content sync secret: %v\n", err)
+		os.Exit(1)
+	}
 
 	file := config.Load()
 	logo := file.Logo()

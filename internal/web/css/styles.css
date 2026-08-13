@@ -1422,3 +1422,4 @@ html[data-theme="black"] .site-header-theme.swap input:not(:checked) ~ .swap-off
 	rotate: calc(45deg * -1);
 	transition: none;
 }
+
