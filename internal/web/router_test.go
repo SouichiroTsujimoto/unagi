@@ -39,6 +39,7 @@ import (
 	"github.com/SouichiroTsujimoto/unagi/internal/web/sitemap"
 	"github.com/SouichiroTsujimoto/unagi/static"
 	"github.com/golang-jwt/jwt/v5"
+	"github.com/labstack/echo/v4"
 )
 
 func newTestRouter(t *testing.T) (*echoRouter, *article.Articles, *engagement.Engagement, *featureauth.Auth) {
@@ -486,6 +487,46 @@ func TestContentSyncRequiresHMAC(t *testing.T) {
 	}
 }
 
+func TestContentSyncImagesAndApply(t *testing.T) {
+	router, _, _, _ := newTestRouter(t)
+	body := []byte(`{"repository":"SouichiroTsujimoto/unagi-content","commit_sha":"bbbbbbb","run_id":"router-apply","articles":[],"images":[]}`)
+
+	req := signedSyncRequest(t, "/api/content-sync/images", "router-apply", body)
+	rec := httptest.NewRecorder()
+	router.ServeHTTP(rec, req)
+	if rec.Code != http.StatusOK || !strings.Contains(rec.Body.String(), `"uploads":[]`) {
+		t.Fatalf("images status=%d body=%s", rec.Code, rec.Body.String())
+	}
+
+	req = signedSyncRequest(t, "/api/content-sync/sync", "router-apply", body)
+	rec = httptest.NewRecorder()
+	router.ServeHTTP(rec, req)
+	if rec.Code != http.StatusOK || !strings.Contains(rec.Body.String(), `"article_count":0`) {
+		t.Fatalf("sync status=%d body=%s", rec.Code, rec.Body.String())
+	}
+
+	req = signedSyncRequest(t, "/api/content-sync/sync", "router-apply", body)
+	rec = httptest.NewRecorder()
+	router.ServeHTTP(rec, req)
+	if rec.Code != http.StatusConflict {
+		t.Fatalf("duplicate sync status=%d body=%s", rec.Code, rec.Body.String())
+	}
+}
+
+func signedSyncRequest(t *testing.T, path, runID string, body []byte) *http.Request {
+	t.Helper()
+	ts := strconv.FormatInt(time.Now().Unix(), 10)
+	repository := "SouichiroTsujimoto/unagi-content"
+	sig := contentsync.Sign("router-sync-secret", http.MethodPost, path, ts, runID, repository, body)
+	req := httptest.NewRequest(http.MethodPost, path, bytes.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set(contentsync.HeaderTimestamp, ts)
+	req.Header.Set(contentsync.HeaderRunID, runID)
+	req.Header.Set(contentsync.HeaderRepository, repository)
+	req.Header.Set(contentsync.HeaderSignature, "sha256="+sig)
+	return req
+}
+
 func TestXAuthRoutes(t *testing.T) {
 	router, _, _, _ := newTestRouter(t)
 
@@ -518,6 +559,67 @@ func TestXAuthRoutes(t *testing.T) {
 	router.ServeHTTP(rec, req)
 	if rec.Code != http.StatusSeeOther || rec.Header().Get("Location") != "/articles/hello-unagi" {
 		t.Fatalf("logout status=%d loc=%q", rec.Code, rec.Header().Get("Location"))
+	}
+}
+
+func TestXAuthCallbackSuccess(t *testing.T) {
+	priv, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
+	if err != nil {
+		t.Fatal(err)
+	}
+	token := signReaderJWT(t, priv, "22222222-2222-2222-2222-222222222222", "reader", "Reader", "")
+	gotrue := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/auth/v1/token" || r.URL.Query().Get("grant_type") != "pkce" {
+			http.NotFound(w, r)
+			return
+		}
+		w.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(w).Encode(map[string]string{"access_token": token})
+	}))
+	t.Cleanup(gotrue.Close)
+
+	auth, err := featureauth.New(featureauth.Config{
+		SupabaseURL:    gotrue.URL,
+		PublishableKey: "sb_publishable_test",
+		SiteBaseURL:    "http://localhost:8080",
+		SessionTTL:     time.Hour,
+		HTTPClient:     gotrue.Client(),
+		Keyfunc: func(tok *jwt.Token) (any, error) {
+			return &priv.PublicKey, nil
+		},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	log := slog.New(slog.NewTextHandler(io.Discard, nil))
+	handler := webauth.New(auth, layout.Site{BaseURL: "http://localhost:8080"}, log)
+	router := http.NewServeMux()
+	router.HandleFunc("GET /auth/x/callback", func(w http.ResponseWriter, r *http.Request) {
+		e := echo.New()
+		e.GET("/auth/x/callback", handler.Callback)
+		e.ServeHTTP(w, r)
+	})
+
+	payload, err := featureauth.EncodePKCEPayload("verifier", "/articles/hello-unagi")
+	if err != nil {
+		t.Fatal(err)
+	}
+	req := httptest.NewRequest(http.MethodGet, "/auth/x/callback?code=oauth-code", nil)
+	req.AddCookie(&http.Cookie{Name: featureauth.PKCECookieName, Value: payload})
+	rec := httptest.NewRecorder()
+	router.ServeHTTP(rec, req)
+	if rec.Code != http.StatusSeeOther || rec.Header().Get("Location") != "/articles/hello-unagi" {
+		t.Fatalf("callback status=%d location=%q body=%s", rec.Code, rec.Header().Get("Location"), rec.Body.String())
+	}
+	var session *http.Cookie
+	for _, cookie := range rec.Result().Cookies() {
+		if cookie.Name == featureauth.CookieName {
+			session = cookie
+			break
+		}
+	}
+	if session == nil || session.Value == "" || !session.HttpOnly {
+		t.Fatalf("session cookies=%v", rec.Result().Cookies())
 	}
 }
 
