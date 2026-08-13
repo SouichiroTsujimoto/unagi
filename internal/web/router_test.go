@@ -376,7 +376,7 @@ func TestAdminAuthBoundaries(t *testing.T) {
 	req.Header.Set("Cookie", reader)
 	rec = httptest.NewRecorder()
 	router.ServeHTTP(rec, req)
-	if rec.Code != http.StatusNotFound {
+	if rec.Code != http.StatusForbidden {
 		t.Fatalf("reader media sign status=%d body=%s", rec.Code, rec.Body.String())
 	}
 }
