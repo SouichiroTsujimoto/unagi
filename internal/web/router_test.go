@@ -351,6 +351,8 @@ func TestAdminAuthBoundaries(t *testing.T) {
 	}
 
 	req = httptest.NewRequest(http.MethodPost, "/api/admin/login/begin", nil)
+	req.Header.Set("Accept", "application/json")
+	req.Header.Set("Cookie", admin)
 	rec = httptest.NewRecorder()
 	router.ServeHTTP(rec, req)
 	if rec.Code != http.StatusNotFound {
@@ -359,6 +361,8 @@ func TestAdminAuthBoundaries(t *testing.T) {
 
 	req = httptest.NewRequest(http.MethodPost, "/api/admin/login/finish", strings.NewReader(`{}`))
 	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Accept", "application/json")
+	req.Header.Set("Cookie", admin)
 	rec = httptest.NewRecorder()
 	router.ServeHTTP(rec, req)
 	if rec.Code != http.StatusNotFound {

@@ -260,7 +260,7 @@ func TestApplyRollsBackOnFailure(t *testing.T) {
 	s, articles, _, _ := testSync(t)
 	ctx := context.Background()
 	good := article.SyncContent{Slug: "ok", SourcePath: "articles/ok.md", SourceHash: "a", Title: "Ok", Type: "tech", BodyMD: "ok\n"}
-	bad := article.SyncContent{Slug: "bad", SourcePath: "articles/bad.md", SourceHash: "b", Title: "Bad", Type: "tech", BodyMD: "nul\x00byte\n"}
+	bad := article.SyncContent{Slug: "ok", SourcePath: "articles/ok.md", SourceHash: "b", Title: "Dup", Type: "tech", BodyMD: "dup\n"}
 	err := s.db.RunInTx(ctx, nil, func(ctx context.Context, tx bun.Tx) error {
 		_, err := articles.ApplySnapshotTx(ctx, tx, []article.SyncContent{good, bad})
 		return err

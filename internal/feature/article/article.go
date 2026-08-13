@@ -60,8 +60,8 @@ type dbArticle struct {
 	Status              string        `bun:",notnull"`
 	PublishedRevisionID sql.NullInt64 `bun:"published_revision_id"`
 	PublishedAt         sql.NullTime  `bun:"published_at"`
-	SourcePath          string        `bun:"source_path"`
-	SourceHash          string        `bun:"source_hash"`
+	SourcePath          string        `bun:"source_path,nullzero"`
+	SourceHash          string        `bun:"source_hash,nullzero"`
 	CreatedAt           time.Time     `bun:",notnull"`
 	UpdatedAt           time.Time     `bun:",notnull"`
 }
