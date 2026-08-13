@@ -22,16 +22,38 @@ templ LoginPage(site layout.Site) {
 			<header class="space-y-2">
 				<h1 class="text-xl font-semibold tracking-tight">Admin Login</h1>
 				<p class="text-base-content/55 text-[15px] leading-relaxed">
-					Supabase Authのpasskeyでログインします。管理者UUIDは環境変数に登録済みである必要があります。
+					Xでログインします。管理者として許可されたアカウントだけが管理画面に入れます。
 				</p>
 			</header>
-			<is-land on:idle>
-				<template data-island>
-					<admin-login></admin-login>
-				</template>
-			</is-land>
+			@xSignIn("/auth/x/login?return_to=/admin")
 		</main>
 	}
+}
+
+templ ForbiddenPage(site layout.Site) {
+	@shell(site, "Forbidden", "admin") {
+		<main class="flex flex-col gap-8">
+			<header class="space-y-2">
+				<h1 class="text-xl font-semibold tracking-tight">権限がありません</h1>
+				<p class="text-base-content/55 text-[15px] leading-relaxed">
+					このXアカウントは管理者として許可されていません。
+				</p>
+			</header>
+			<div class="flex flex-wrap items-center gap-3">
+				<a href="/" class="btn btn-ghost btn-sm">トップへ戻る</a>
+				<a href="/auth/x/logout?return_to=/admin/login" class="btn btn-ghost btn-sm">別のアカウントでログイン</a>
+			</div>
+		</main>
+	}
+}
+
+templ xSignIn(href string) {
+	<a class="x-signin-btn" href={ templ.SafeURL(href) }>
+		<svg class="x-signin-btn-logo" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+			<path fill="currentColor" d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"></path>
+		</svg>
+		<span class="x-signin-btn-label">Xでログイン</span>
+	</a>
 }
 
 templ IndexPage(site layout.Site, items []article.Article) {

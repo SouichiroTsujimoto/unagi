@@ -1,4 +1,4 @@
-// Package auth verifies Supabase Auth (GoTrue) JWTs and mediates OAuth / passkeys.
+// Package auth verifies Supabase Auth (GoTrue) JWTs and mediates X OAuth.
 package auth
 
 import (
@@ -30,7 +30,6 @@ const (
 
 var (
 	ErrUnauthorized  = errors.New("unauthorized")
-	ErrForbidden     = errors.New("forbidden")
 	ErrNotConfigured = errors.New("auth not configured")
 	ErrOAuthFailed   = errors.New("oauth failed")
 	ErrInvalidState  = errors.New("invalid oauth state")
@@ -190,42 +189,6 @@ func (a *Auth) ParseAccessToken(ctx context.Context, raw string) (User, error) {
 func (a *Auth) IsAdminUser(userID string) bool {
 	_, ok := a.adminSet[strings.TrimSpace(userID)]
 	return ok
-}
-
-// BeginPasskeyLogin proxies GoTrue passkey authentication options.
-func (a *Auth) BeginPasskeyLogin(ctx context.Context) (json.RawMessage, error) {
-	return a.gotrueJSON(ctx, http.MethodPost, "/auth/v1/passkeys/authentication/options", nil, "")
-}
-
-// FinishPasskeyLogin verifies a passkey assertion via GoTrue and returns the session user.
-func (a *Auth) FinishPasskeyLogin(ctx context.Context, challengeID string, credential json.RawMessage) (User, error) {
-	challengeID = strings.TrimSpace(challengeID)
-	if challengeID == "" || len(credential) == 0 {
-		return User{}, ErrUnauthorized
-	}
-	body, err := json.Marshal(map[string]any{
-		"challenge_id":        challengeID,
-		"credential_response": json.RawMessage(credential),
-	})
-	if err != nil {
-		return User{}, err
-	}
-	raw, err := a.gotrueJSON(ctx, http.MethodPost, "/auth/v1/passkeys/authentication/verify", body, "")
-	if err != nil {
-		return User{}, err
-	}
-	tok, err := extractAccessToken(raw)
-	if err != nil {
-		return User{}, err
-	}
-	user, err := a.ParseAccessToken(ctx, tok)
-	if err != nil {
-		return User{}, err
-	}
-	if !user.IsAdmin {
-		return User{}, ErrForbidden
-	}
-	return user, nil
 }
 
 // StartXOAuth returns the Supabase authorize URL and PKCE verifier cookie value.

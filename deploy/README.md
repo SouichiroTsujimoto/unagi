@@ -18,10 +18,10 @@ Vercel FunctionやMiddleware、External Rewriteは使わない。
 
 1. プロジェクトを`ap-northeast-1`で作る。
 2. DashboardのIntegrationsでGitHubをこのリポジトリに繋ぐ。Working directoryは`.`。**Deploy to productionをON**にする。Automatic branchingは使わない。
-3. Authでpasskeyを有効にし、X(Twitter) providerにclient IDとsecretを入れる。secretはアプリではなくSupabase側に置く。
+3. AuthのX(Twitter) providerにclient IDとsecretを入れる。secretはアプリではなくSupabase側に置く。passkeyは使わないので無効のままでよい。
 4. AuthのSite URLとredirect URLに`UNIGO_SITE_BASE_URL`と`{BASE}/auth/x/callback`を入れる。
-5. Studioで管理者ユーザを作り、UUIDを控える。ここに入れた人だけが`/admin`に入れる。
-6. 接続文字列と、Settings > API Keysのpublishable / secretを控える。Legacyのanon / service_roleは使わない。JWTは`/auth/v1/.well-known/jwks.json`で検証するのでJWT secretは不要。
+5. 接続文字列と、Settings > API Keysのpublishable / secretを控える。Legacyのanon / service_roleは使わない。JWTは`/auth/v1/.well-known/jwks.json`で検証するのでJWT secretは不要。
+6. サイト公開後に`/admin`からXログインし、DashboardのAuthentication > Usersで自分のUUIDを控える。そのUUIDだけを`UNIGO_ADMIN_USER_IDS`へ入れる。変更後はVercelを再deployする。
 
 `UNIGO_DB_DSN`はpoolerのsession mode(ポート5432)を使う。直接接続(`db.<ref>.supabase.co`)はIPv6のみで届かないことがあり、transaction mode(6543)はprepared statementと衝突する。
 

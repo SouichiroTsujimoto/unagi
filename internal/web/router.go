@@ -62,8 +62,6 @@ func New(h Handlers, staticFiles, islandFiles fs.FS) *echo.Echo {
 	router.POST("/api/linkcards", h.LinkCard.Resolve)
 
 	router.GET("/admin/login", h.Admin.LoginPage)
-	router.POST("/api/admin/login/begin", h.Admin.BeginLogin)
-	router.POST("/api/admin/login/finish", h.Admin.FinishLoginAPI)
 
 	adminPages := router.Group("/admin", h.Admin.RequireAuth, h.Admin.RequireOrigin)
 	adminPages.GET("", h.Admin.Index)

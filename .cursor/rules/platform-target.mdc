@@ -13,7 +13,7 @@ alwaysApply: true
 - 入口 / TLS: 同じVercel projectの独自ドメイン。Vercel Function / Middleware、External Rewrite、Cloud Run domain mapping、CertMagicは使わない
 - DB: Supabase Postgres。ローカルは `supabase start`。sqlite はない
 - 画像: Supabase Storage、公開読み、同梱 CDN。browserはsigned URLで直接uploadする。Go の `/images` プロキシはない
-- 認証: Supabase Auth。admin(passkey + UUID allowlist)と読者Xログインは `internal/feature/auth`
+- 認証: Supabase Auth。admin(X OAuth + UUID allowlist)と読者Xログインは `internal/feature/auth`
 - Auth の実装: Go が JWT / GoTrue を検証する。island に supabase-js を入れない
 - CMSの業務(記事・スタンプ・コメントのルール、templ、islands)はGoに残す
 - schema: `supabase/migrations/`。適用は`supabase start`とGitHub integrationのDeploy to production。アプリは起動時にmigrateしない

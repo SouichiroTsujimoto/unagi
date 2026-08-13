@@ -7,7 +7,7 @@
 - 開発者体験: `supabase start` + `just run`でホットリロード・TUI対応。`cmd/dev`は`.env`を読む(`bin/server`は読まない)
 - Islands Architecture: templ + `<is-land>` + Preact/htm (ビルド時・実行時 Node.js不要)。supabase-jsはislandに入れない
 - 公開記事の正本はPostgres。埋め込み`articles/`は空DB時のseed用
-- 管理画面(`/admin`)はSupabase Auth(passkey) + `UNIGO_ADMIN_USER_IDS`のallowlist。秘密は環境変数(`.unigo.toml`に平文で置かない)
+- 管理画面(`/admin`)はSupabase AuthのX OAuth + `UNIGO_ADMIN_USER_IDS`のallowlist。秘密は環境変数(`.unigo.toml`に平文で置かない)
 
 小さなpackage境界を保つ。
 

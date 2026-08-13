@@ -136,7 +136,7 @@ func TestBlogRoutes(t *testing.T) {
 		{name: "about", path: "/about", status: 200, contains: []string{"<title>Me · unagi</title>", "me", "unagi", "学部3回生", "https://x.com/wuhu1sland", "https://github.com/SouichiroTsujimoto", `aria-label="unagi トップへ"`}},
 		{name: "feed", path: "/feed.xml", status: 200, contains: []string{"<rss", "hello-unagi"}},
 		{name: "sitemap", path: "/sitemap.xml", status: 200, contains: []string{"<urlset", "/articles/hello-unagi"}},
-		{name: "admin login", path: "/admin/login", status: 200, contains: []string{"passkey"}},
+		{name: "admin login", path: "/admin/login", status: 200, contains: []string{"Xでログイン", "/auth/x/login?return_to=/admin"}},
 		{name: "admin blocked", path: "/admin", status: 303},
 		{name: "accounts gone", path: "/api/accounts", status: 404},
 		{name: "healthz", path: "/healthz", status: 200},
@@ -303,6 +303,70 @@ func TestEngagementRoutes(t *testing.T) {
 
 func itoa(v int64) string {
 	return strconv.FormatInt(v, 10)
+}
+
+func TestAdminAuthBoundaries(t *testing.T) {
+	router, _, _, _ := newTestRouter(t)
+	reader := featureauth.CookieName + "=" + signReaderJWT(t, router.jwtKey, "22222222-2222-2222-2222-222222222222", "reader", "reader", "")
+	admin := featureauth.CookieName + "=" + signReaderJWT(t, router.jwtKey, "11111111-1111-1111-1111-111111111111", "souic", "souic", "")
+
+	req := httptest.NewRequest(http.MethodGet, "/admin", nil)
+	req.Header.Set("Cookie", reader)
+	rec := httptest.NewRecorder()
+	router.ServeHTTP(rec, req)
+	if rec.Code != http.StatusForbidden || !strings.Contains(rec.Body.String(), "管理者として許可されていません") {
+		t.Fatalf("reader /admin status=%d body=%s", rec.Code, rec.Body.String())
+	}
+
+	req = httptest.NewRequest(http.MethodGet, "/admin/login", nil)
+	req.Header.Set("Cookie", reader)
+	rec = httptest.NewRecorder()
+	router.ServeHTTP(rec, req)
+	if rec.Code != http.StatusForbidden || !strings.Contains(rec.Body.String(), "管理者として許可されていません") {
+		t.Fatalf("reader /admin/login status=%d body=%s", rec.Code, rec.Body.String())
+	}
+
+	req = httptest.NewRequest(http.MethodGet, "/admin/login", nil)
+	req.Header.Set("Cookie", admin)
+	rec = httptest.NewRecorder()
+	router.ServeHTTP(rec, req)
+	if rec.Code != http.StatusSeeOther || rec.Header().Get("Location") != "/admin" {
+		t.Fatalf("admin /admin/login status=%d loc=%q", rec.Code, rec.Header().Get("Location"))
+	}
+
+	req = httptest.NewRequest(http.MethodGet, "/admin", nil)
+	req.Header.Set("Cookie", admin)
+	rec = httptest.NewRecorder()
+	router.ServeHTTP(rec, req)
+	if rec.Code != http.StatusOK || !strings.Contains(rec.Body.String(), "記事管理") {
+		t.Fatalf("admin /admin status=%d body=%s", rec.Code, rec.Body.String())
+	}
+
+	req = httptest.NewRequest(http.MethodPost, "/api/admin/login/begin", nil)
+	rec = httptest.NewRecorder()
+	router.ServeHTTP(rec, req)
+	if rec.Code != http.StatusNotFound {
+		t.Fatalf("passkey begin status=%d body=%s", rec.Code, rec.Body.String())
+	}
+
+	req = httptest.NewRequest(http.MethodPost, "/api/admin/login/finish", strings.NewReader(`{}`))
+	req.Header.Set("Content-Type", "application/json")
+	rec = httptest.NewRecorder()
+	router.ServeHTTP(rec, req)
+	if rec.Code != http.StatusNotFound {
+		t.Fatalf("passkey finish status=%d body=%s", rec.Code, rec.Body.String())
+	}
+
+	req = httptest.NewRequest(http.MethodPost, "/api/admin/media/sign", strings.NewReader(`{"filename":"dot.png","contentType":"image/png","sizeBytes":12}`))
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Accept", "application/json")
+	req.Header.Set("Origin", "http://localhost:8080")
+	req.Header.Set("Cookie", reader)
+	rec = httptest.NewRecorder()
+	router.ServeHTTP(rec, req)
+	if rec.Code != http.StatusForbidden {
+		t.Fatalf("reader media sign status=%d body=%s", rec.Code, rec.Body.String())
+	}
 }
 
 func TestAdminMediaSignRequiresAuth(t *testing.T) {

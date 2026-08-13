@@ -125,8 +125,8 @@ func TestGotrueJSONSendsPublishableKeyOnApikeyOnly(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := a.BeginPasskeyLogin(context.Background()); err != nil {
-		t.Fatal(err)
+	if _, err := a.FinishXOAuth(context.Background(), "code", "verifier"); err == nil {
+		t.Fatal("expected missing access_token")
 	}
 	if gotAPIKey != "sb_publishable_test" {
 		t.Fatalf("apikey=%q", gotAPIKey)

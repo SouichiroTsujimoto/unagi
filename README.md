@@ -13,7 +13,7 @@ cp .env.example .env
 supabase gen signing-key --algorithm ES256 > supabase/signing_keys.json
 supabase start
 # `supabase start` の Publishable / Secret を .env に反映
-# Studioで管理者ユーザを作り、UUIDを UNIGO_ADMIN_USER_IDS へ
+# /admin からXログインし、DashboardのAuthentication Usersで自分のUUIDを UNIGO_ADMIN_USER_IDS へ
 just run
 ```
 
@@ -43,7 +43,7 @@ jj git push
 
 - 公開記事の正本はSupabase Postgres。埋め込み`articles/`は空DB時のseed用
 - schemaは`supabase/migrations/`。mainへのpushでGitHub integrationが適用する。アプリは起動時にmigrateしない
-- 管理: `/admin`(Supabase Auth passkey + `UNIGO_ADMIN_USER_IDS`)。読者ログインはX(Twitter) provider
+- 管理: `/admin`(Supabase AuthのX OAuth + `UNIGO_ADMIN_USER_IDS`)。読者ログインも同じX provider
 - 画像はSupabase Storage公開バケット。管理画面はsigned URLで直接uploadし、Markdownの`/images/...`は公開ベースURLへ書き換え。アプリは`GET /images`を持たない
 - 独自ドメインとTLSはVercelで終端し、同じprojectの`Dockerfile.vercel`コンテナ(東京`hnd1`)がアプリを動かす。アプリはHTTPのみ(`PORT`)
 
