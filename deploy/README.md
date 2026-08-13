@@ -1,12 +1,12 @@
-# 本番(Vercel container)
+# 本番(Vercel Go Runtime)
 
-東京(`hnd1`)のVercel Functions上で、rootの`Dockerfile.vercel`が作るdistroless Goバイナリを動かす。独自ドメインとTLSも同じVercel projectが終端する。アプリはHTTPだけを話し`PORT`を読む。DB / Auth / StorageはSupabase。記事・画像の正本は[unagi-content](https://github.com/SouichiroTsujimoto/unagi-content)で、Actionsが署名付きAPI経由でPostgresとStorageへ全量同期する。
+東京(`hnd1`)のVercel Go Runtime上で、`cmd/server/main.go`のHTTPサーバを動かす。Vercelは`go.mod`のversionでtoolchainを選び、platform提供の`PORT`でサーバを起動する。独自ドメインとTLSも同じVercel projectが終端する。DB / Auth / StorageはSupabase。記事・画像の正本は[unagi-content](https://github.com/SouichiroTsujimoto/unagi-content)で、Actionsが署名付きAPI経由でPostgresとStorageへ全量同期する。
 
-Vercel FunctionやMiddleware、External Rewriteは使わない。
+追加のVercel FunctionやRouting Middleware、External Rewriteは使わない。
 
 ## 運用
 
-**mainへpushすると本番が更新される。** Vercel Git integrationが`Dockerfile.vercel`をbuildしてdeployし、[Supabase GitHub integration](https://supabase.com/docs/guides/deployment/branching/github-integration)のDeploy to productionが`supabase/migrations/`を適用する。アプリは起動時にmigrateしない。GitHub Actionsのverify jobはテストするだけで、deployの必須gateにはしない。
+**mainへpushすると本番が更新される。** Vercel Git integrationがGo Framework Presetでbuildしてdeployし、[Supabase GitHub integration](https://supabase.com/docs/guides/deployment/branching/github-integration)のDeploy to productionが`supabase/migrations/`を適用する。アプリは起動時にmigrateしない。GitHub Actionsのverify jobはテストするだけで、deployの必須gateにはしない。
 
 戻すときはrevertしてpushする。schemaの巻き戻しも新しいmigrationファイルを足す(適用済みファイルは書き換えない)。
 
@@ -34,7 +34,7 @@ Vercel FunctionやMiddleware、External Rewriteは使わない。
 このGitHub repositoryをVercelへimportする。値はGitHubやリポジトリのファイルには置かない。Vercel Dashboardの **Project → Settings → Environment Variables** へ入れる。
 
 1. Root Directoryはリポジトリroot(`.`)。Settings → General で確認する。以前のproxy用`deploy/vercel`のままだと、空の静的deployになり全pathが404になる。
-2. Framework PresetはOther。`Dockerfile.vercel`があればVercelがcontainerとして検出する。
+2. Framework PresetはGo。`vercel.json`でも`framework`を`go`に固定する。
 3. Function RegionをTokyo (`hnd1`)にする。`vercel.json`の`regions`も同じ値。
 4. 下表を **Production** に入れる。Sensitiveな値はSensitiveにする。import直後に自動deployが走っても、変数を入れてから **Deployments → Redeploy** すれば反映される。
 5. Domainsへ`unagi.wuhu1s.land`を追加する。`UNIGO_SITE_BASE_URL`は最初からこのURLで入れてよい。
@@ -51,9 +51,10 @@ Vercel FunctionやMiddleware、External Rewriteは使わない。
 | `UNIGO_SITE_BASE_URL` | `https://unagi.wuhu1s.land` | |
 | `UNIGO_MEDIA_PUBLIC_BASE` | `https://YOUR_REF.supabase.co/storage/v1/object/public/images` | |
 | `UNIGO_CONTENT_SYNC_SECRET` | 記事同期HMAC用の長い乱数 | yes |
-| `PORT` | `8080`(`Dockerfile.vercel`の既定と同じ) | |
 
-サイト名と説明は`.unigo.toml`を正本とする。画像bucketは`images`、記事repositoryは`SouichiroTsujimoto/unagi-content`に固定しているため環境変数を設けない。`CLOUD_RUN_ORIGIN`も使わない。GitHub Actionsのrepository variablesにも入れない。
+`PORT`はVercelが注入するため環境変数へ登録しない。旧container構成の`PORT=8080`が残っていれば削除する。
+
+サイト名は`.unigo.toml`、説明は`internal/app`の`wuhu1slandの技術ノート`を正本とする。画像bucketは`images`、記事repositoryは`SouichiroTsujimoto/unagi-content`に固定しているため環境変数を設けない。`CLOUD_RUN_ORIGIN`も使わない。GitHub Actionsのrepository variablesにも入れない。
 
 `UNIGO_SITE_BASE_URL`をこのあと変えた場合は、Vercelの環境変数とSupabaseのSite URL / redirect URLを同じ値に揃えて再deployする。**ここがずれるとOAuth callbackとOriginチェックが落ちる。**症状はログインだけが失敗する形で出る。
 

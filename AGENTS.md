@@ -1,9 +1,9 @@
 # プロジェクト規約
 
-このリポジトリは**unagi**(個人用のミニマルな技術ブログ)である。[unigo-template](https://github.com/SouichiroTsujimoto/unigo-template)から作成し、同じワンバイナリ構成(Go、Echo、templ、is-land、Preact/htm、Tailwind CSS、daisyUI、lipgloss、tint、huh)を引き継ぐ。DB / Auth / StorageはSupabase、本番はVercelの`Dockerfile.vercel`(distroless)とする。
+このリポジトリは**unagi**(個人用のミニマルな技術ブログ)である。[unigo-template](https://github.com/SouichiroTsujimoto/unigo-template)から作成し、同じワンバイナリ構成(Go、Echo、templ、is-land、Preact/htm、Tailwind CSS、daisyUI、lipgloss、tint、huh)を引き継ぐ。DB / Auth / StorageはSupabase、本番はVercel Go Runtimeとする。
 
-- ワンバイナリ: 別ランタイム不要(Vercelはdistroless静的バイナリ)
-- デプロイ: Vercelが独自ドメインとTLSを終端し、`Dockerfile.vercel`のコンテナ(東京`hnd1`)を動かす。mainへのpushでVercel Git integrationがデプロイし、Supabase GitHub integration(Deploy to production)が`supabase/migrations/`を適用する。手順は`deploy/README.md`
+- ワンバイナリ: 別ランタイム不要(Vercelが`go.mod`のtoolchainでbuild)
+- デプロイ: Vercelが独自ドメインとTLSを終端し、Go Framework PresetのHTTPサーバ(東京`hnd1`)を動かす。mainへのpushでVercel Git integrationがデプロイし、Supabase GitHub integration(Deploy to production)が`supabase/migrations/`を適用する。手順は`deploy/README.md`
 - 開発者体験: `supabase start` + `just run`でホットリロード・TUI対応。`cmd/dev`は`.env`を読む(`bin/server`は読まない)
 - Islands Architecture: templ + `<is-land>` + Preact/htm (ビルド時・実行時 Node.js不要)。supabase-jsはislandに入れない
 - 記事・画像の正本はGitHubリポジトリ`SouichiroTsujimoto/unagi-content`。Postgresは公開サイトのread model
@@ -37,10 +37,10 @@
 - 機能packageのデータアクセスにはBunを使う。
 - DB接続(driver/DSN)とBunの構築は`internal/db`が所有する。schema変更は`supabase/migrations/`のtimestamp付きSQLで管理し、適用はSupabase CLIとGitHub integrationに任せる。アプリ起動時には流さない。
 - 操作の入口は`article.Articles`や`auth.Auth`のように機能を表す名前にし、汎用的な`Service`や`Context`を避ける。
-- HTTPサーバの起動処理(コンテナ向けHTTP + SIGTERM)は`internal/httpserver`が所有する。
+- HTTPサーバの起動処理(Vercel Go Runtime / ローカル向けHTTP + SIGTERM)は`internal/httpserver`が所有する。
 - 起動バナー、tint付き端末ログは`internal/terminal`が所有する。
 - 開発用ランチャー／TUI(Bubble Tea)は`cmd/dev/internal/tui`が所有する。
-- プロジェクト設定(`.unigo.toml`)は`internal/config`が所有する。secretは環境変数 / `.env`。
+- プロジェクト設定(`.unigo.toml`)は`internal/config`が所有する。site descriptionは`internal/app`の固定値とし、secretは環境変数 / `.env`。
 - 埋め込み静的資産は`static`が所有する(CSS、vendored ESM)。islandのソースは`internal/web/islands`が所有し、`/static/islands`として配信する。
 - カスタムバナーロゴのASCII生成は`cmd/logo` / `internal/logogen`が所有する(`bin/server`にはascii-image-converterをリンクしない)。
 - `common`、`utils`、`service`、`repository`、`cli`を慣習だけで追加しない。

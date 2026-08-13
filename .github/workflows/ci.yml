@@ -46,8 +46,8 @@ jobs:
       - name: Generate templ
         run: go tool templ generate -path internal/web
 
-      # The image builds from committed sources, so stale generated files
-      # would ship to production.
+      # Vercel builds from committed sources, so stale generated files would
+      # ship to production.
       - name: Check generated files
         run: git diff --exit-code
 
@@ -58,4 +58,4 @@ jobs:
         run: go vet ./...
 
       - name: Build
-        run: CGO_ENABLED=0 go build -o bin/server ./cmd/server
+        run: CGO_ENABLED=0 go build -trimpath -ldflags "-s -w" -o bin/server ./cmd/server

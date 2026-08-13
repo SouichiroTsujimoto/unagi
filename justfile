@@ -80,14 +80,6 @@ supabase-stop:
 supabase-status:
     supabase status -o env
 
-# Linux amd64 binary (Vercel container / distroless).
-build-linux:
-    #!/usr/bin/env bash
-    set -euo pipefail
-    version="$(git describe --tags --always --dirty 2>/dev/null || date -u +%Y%m%d%H%M%S)"
-    GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build -ldflags "-X main.version=${version}" -o bin/server-linux-amd64 ./cmd/server
-    echo "wrote bin/server-linux-amd64 (${version})"
-
 # Generate custom listen-banner ASCII from [banner].image (ascii-image-converter).
 # No-op when image is unset. Writes sibling <name>-ascii.txt (+ .sha256); commit both.
 logo:

@@ -1,17 +1,10 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
+  "framework": "go",
   "regions": ["hnd1"],
-  "services": {
-    "app": {
-      "runtime": "container",
-      "root": ".",
-      "entrypoint": "Dockerfile.vercel"
+  "build": {
+    "env": {
+      "GO_BUILD_FLAGS": "-trimpath -ldflags '-s -w'"
     }
-  },
-  "rewrites": [
-    {
-      "source": "/(.*)",
-      "destination": { "service": "app" }
-    }
-  ]
+  }
 }

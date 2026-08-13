@@ -25,9 +25,8 @@ type File struct {
 
 // Site holds public site metadata for pages, RSS, and sitemap.
 type Site struct {
-	Name        string `toml:"name"`
-	Description string `toml:"description"`
-	BaseURL     string `toml:"base_url"`
+	Name    string `toml:"name"`
+	BaseURL string `toml:"base_url"`
 }
 
 // DB holds the Postgres connection default.
@@ -78,9 +77,8 @@ func Default() File {
 			},
 		},
 		Site: Site{
-			Name:        "unagi",
-			Description: "個人用のミニマルな技術ブログ",
-			BaseURL:     "http://localhost:8080",
+			Name:    "unagi",
+			BaseURL: "http://localhost:8080",
 		},
 	}
 }
@@ -127,9 +125,6 @@ func (f File) mergeDefaults() File {
 	}
 	if strings.TrimSpace(f.Site.Name) == "" {
 		f.Site.Name = def.Site.Name
-	}
-	if strings.TrimSpace(f.Site.Description) == "" {
-		f.Site.Description = def.Site.Description
 	}
 	if strings.TrimSpace(f.Site.BaseURL) == "" {
 		f.Site.BaseURL = def.Site.BaseURL

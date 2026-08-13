@@ -102,7 +102,6 @@ func TestLoadPathReadsSite(t *testing.T) {
 	content := `
 [site]
 name = "myblog"
-description = "desc"
 base_url = "https://example.com"
 `
 	if err := os.WriteFile(path, []byte(content), 0o644); err != nil {

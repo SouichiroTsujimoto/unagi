@@ -1,6 +1,6 @@
 # unagi
 
-個人用のミニマルな技術ブログ。Goワンバイナリ(Echo / templ / is-land / Preact) + Supabase(Postgres / Auth / Storage) + Vercel(`Dockerfile.vercel`、東京)。
+個人用のミニマルな技術ブログ。Goワンバイナリ(Echo / templ / is-land / Preact) + Supabase(Postgres / Auth / Storage) + Vercel Go Runtime(東京)。
 
 [unigo-template](https://github.com/SouichiroTsujimoto/unigo-template)から作成しています。
 
@@ -44,7 +44,7 @@ jj git push
 - schemaは`supabase/migrations/`。mainへのpushでGitHub integrationが適用する。アプリは起動時にmigrateしない
 - 管理: `/admin`(Supabase AuthのX OAuth + `UNIGO_ADMIN_USER_IDS`)で公開切替とコメント・ステッカー管理。本文編集はしない
 - 画像はSupabase Storage公開バケット。GitHub Actionsがcontent-addressed objectを直接PUTする。Markdownの`/images/...`は公開ベースURLへ書き換え。アプリは`GET /images`を持たない
-- 独自ドメインとTLSはVercelで終端し、同じprojectの`Dockerfile.vercel`コンテナ(東京`hnd1`)がアプリを動かす。アプリはHTTPのみ(`PORT`)
+- 独自ドメインとTLSはVercelで終端し、Go Framework PresetのHTTPサーバ(東京`hnd1`)がアプリを動かす。アプリはplatform提供の`PORT`を読む
 - 記事更新はVercel deployを起こさない。同期手順は[deploy/content-sync/README.md](deploy/content-sync/README.md)
 
 ## License

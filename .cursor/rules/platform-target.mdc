@@ -1,5 +1,5 @@
 ---
-description: 本番プラットフォーム(Vercel container + Supabase一式)
+description: 本番プラットフォーム(Vercel Go Runtime + Supabase一式)
 alwaysApply: true
 ---
 
@@ -9,8 +9,8 @@ alwaysApply: true
 
 ## 採用
 
-- 計算: distroless コンテナを Vercel(`Dockerfile.vercel`、東京`hnd1`)
-- 入口 / TLS: 同じVercel projectの独自ドメイン。Vercel Function / Middleware、External Rewrite、Cloud Run domain mapping、CertMagicは使わない
+- 計算: Vercel Go Runtime(`cmd/server/main.go`、東京`hnd1`)
+- 入口 / TLS: 同じVercel projectの独自ドメイン。追加のVercel Function / Routing Middleware、External Rewrite、Cloud Run domain mapping、CertMagicは使わない
 - DB: Supabase Postgres。ローカルは `supabase start`。sqlite はない
 - 画像: Supabase Storage、公開読み、同梱 CDN。記事画像はGitHub Actionsがsigned URLで直接uploadする。Go の `/images` プロキシはない
 - 記事正本: `SouichiroTsujimoto/unagi-content`。Postgresはread model。同期はHMAC付き全量API(`internal/feature/contentsync`)

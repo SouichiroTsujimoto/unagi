@@ -14,7 +14,7 @@ func TestLoadConfigBuildsRuntimeConfig(t *testing.T) {
 	if err := os.WriteFile(path, []byte(`
 [site]
 name = "unagi"
-description = "技術ノート"
+description = "ignored"
 base_url = "http://localhost:8080"
 
 [db]
@@ -41,7 +41,7 @@ dsn = "postgresql://toml"
 	if cfg.DB.DSN != "postgresql://runtime" {
 		t.Fatalf("dsn=%q", cfg.DB.DSN)
 	}
-	if cfg.Site.Name != "unagi" || cfg.Site.Description != "技術ノート" {
+	if cfg.Site.Name != "unagi" || cfg.Site.Description != siteDescription {
 		t.Fatalf("site=%+v", cfg.Site)
 	}
 	if cfg.Site.BaseURL != "https://example.com" || cfg.Site.MediaOrigin != "https://project.supabase.co" {

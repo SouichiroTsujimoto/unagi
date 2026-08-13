@@ -13,7 +13,10 @@ import (
 	"github.com/SouichiroTsujimoto/unagi/internal/web/layout"
 )
 
-const defaultSupabaseURL = "http://127.0.0.1:54321"
+const (
+	defaultSupabaseURL = "http://127.0.0.1:54321"
+	siteDescription    = "wuhu1slandの技術ノート"
+)
 
 type Config struct {
 	Address           string
@@ -46,7 +49,7 @@ func LoadConfig(version string) Config {
 		),
 		Site: layout.Site{
 			Name:        file.Site.Name,
-			Description: file.Site.Description,
+			Description: siteDescription,
 			BaseURL:     siteBaseURL,
 			MediaOrigin: layout.OriginOf(mediaPublicBase),
 		},
@@ -88,7 +91,7 @@ func (cfg Config) withDefaults() Config {
 	}
 	cfg.Site.Description = strings.TrimSpace(cfg.Site.Description)
 	if cfg.Site.Description == "" {
-		cfg.Site.Description = "個人用のミニマルな技術ブログ"
+		cfg.Site.Description = siteDescription
 	}
 	cfg.Site.BaseURL = strings.TrimRight(strings.TrimSpace(cfg.Site.BaseURL), "/")
 	cfg.MediaPublicBase = strings.TrimRight(strings.TrimSpace(cfg.MediaPublicBase), "/")
