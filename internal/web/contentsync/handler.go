@@ -111,6 +111,6 @@ func mapError(err error) error {
 	case errors.Is(err, feature.ErrInvalidSnapshot):
 		return echo.NewHTTPError(http.StatusBadRequest, err.Error())
 	default:
-		return err
+		return echo.NewHTTPError(http.StatusBadGateway, err.Error())
 	}
 }

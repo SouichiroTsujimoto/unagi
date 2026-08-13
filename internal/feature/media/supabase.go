@@ -138,23 +138,25 @@ func (s *SupabaseStore) Exists(ctx context.Context, key string) (bool, error) {
 	if !validObjectKey(key) {
 		return false, ErrInvalidObject
 	}
-	url := fmt.Sprintf("%s/storage/v1/object/public/%s/%s", s.baseURL, s.bucket, key)
+	url := fmt.Sprintf("%s/storage/v1/object/%s/%s", s.baseURL, s.bucket, key)
 	req, err := http.NewRequestWithContext(ctx, http.MethodHead, url, nil)
 	if err != nil {
 		return false, err
 	}
+	s.authorize(req)
 	res, err := s.client.Do(req)
 	if err != nil {
 		return false, err
 	}
 	defer res.Body.Close()
-	if res.StatusCode == http.StatusNotFound {
-		return false, nil
-	}
-	if res.StatusCode >= 200 && res.StatusCode < 300 {
+	switch {
+	case res.StatusCode >= 200 && res.StatusCode < 300:
 		return true, nil
+	case res.StatusCode == http.StatusNotFound, res.StatusCode == http.StatusBadRequest, res.StatusCode == http.StatusForbidden:
+		return false, nil
+	default:
+		return false, fmt.Errorf("supabase storage head: status %d", res.StatusCode)
 	}
-	return false, fmt.Errorf("supabase storage head: status %d", res.StatusCode)
 }
 
 func (s *SupabaseStore) Delete(ctx context.Context, key string) error {
