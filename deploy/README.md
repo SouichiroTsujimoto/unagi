@@ -29,23 +29,19 @@ Vercel FunctionやMiddleware、External Rewriteは使わない。
 
 画像uploadはGoがsigned URLを発行し、browserがSupabase Storageへ直接PUTする。Storage CORSでサイトorigin(`UNIGO_SITE_BASE_URL`とローカルの`http://localhost:8080`)を許可する。DashboardのStorage settingsから設定する。
 
-### 2. Vercel project
+### 2. Vercel projectと環境変数
 
-このGitHub repositoryをVercelへimportする。
+このGitHub repositoryをVercelへimportする。値はGitHubやリポジトリのファイルには置かない。Vercel Dashboardの **Project → Settings → Environment Variables** へ入れる。
 
 1. Root Directoryはリポジトリroot(`.`)。`deploy/vercel`ではない。
 2. Framework PresetはOther。`Dockerfile.vercel`があればVercelがcontainerとして検出する。
 3. Function RegionをTokyo (`hnd1`)にする。`vercel.json`の`regions`も同じ値。
-4. Production環境変数を入れる(下表)。Sensitiveな値はSensitiveにする。
-5. Domainsへ`unagi.wuhu1s.land`を追加する。
+4. 下表を **Production** に入れる。Sensitiveな値はSensitiveにする。import直後に自動deployが走っても、変数を入れてから **Deployments → Redeploy** すれば反映される。
+5. Domainsへ`unagi.wuhu1s.land`を追加する。`UNIGO_SITE_BASE_URL`は最初からこのURLで入れてよい。
 
-`UNIGO_SITE_BASE_URL`をこのあと変えた場合は、Vercelの環境変数とSupabaseのSite URL / redirect URLを同じ値に揃えて再deployする。**ここがずれるとOAuth callbackとOriginチェックが落ちる。**症状はログインだけが失敗する形で出る。
+値の入手元はSupabase Dashboard(手順1で控えたもの)。手元に`deploy/cloudrun/.env`が残っていれば、同じ`UNIGO_*`をコピーしてよい。
 
-Vercel Hobbyは個人・非商用だけに使える。
-
-### 3. 環境変数
-
-| 変数 | Production | Sensitive |
+| 変数 | 値 | Sensitive |
 | --- | --- | --- |
 | `UNIGO_DB_DSN` | pooler session mode(5432) | yes |
 | `UNIGO_SUPABASE_URL` | `https://YOUR_REF.supabase.co` | |
@@ -58,7 +54,11 @@ Vercel Hobbyは個人・非商用だけに使える。
 | `UNIGO_SITE_DESCRIPTION` | 任意 | |
 | `PORT` | `8080`(`Dockerfile.vercel`の既定と同じ) | |
 
-`CLOUD_RUN_ORIGIN`は使わない。
+`CLOUD_RUN_ORIGIN`は使わない。GitHub Actionsのrepository variablesにも入れない。
+
+`UNIGO_SITE_BASE_URL`をこのあと変えた場合は、Vercelの環境変数とSupabaseのSite URL / redirect URLを同じ値に揃えて再deployする。**ここがずれるとOAuth callbackとOriginチェックが落ちる。**症状はログインだけが失敗する形で出る。
+
+Vercel Hobbyは個人・非商用だけに使える。
 
 ## 性質
 
