@@ -19,6 +19,11 @@ func (e *Engagement) GetSnapshot(ctx context.Context, slug string, now time.Time
 	if err != nil {
 		return Snapshot{}, err
 	}
+	if viewer != nil {
+		normalized := *viewer
+		normalized.AvatarURL = highResolutionXAvatarURL(viewer.AvatarURL)
+		viewer = &normalized
+	}
 
 	stickers, err := e.listStickers(ctx, art.ID)
 	if err != nil {
@@ -132,7 +137,7 @@ func (e *Engagement) AddAvatarSticker(ctx context.Context, slug string, now time
 	row := &dbSticker{
 		ArticleID:   art.ID,
 		Kind:        KindAvatar,
-		Value:       author.AvatarURL,
+		Value:       highResolutionXAvatarURL(author.AvatarURL),
 		X:           x,
 		Y:           y,
 		XUserID:     &xUserID,
@@ -196,7 +201,7 @@ func (e *Engagement) AddComment(ctx context.Context, slug string, now time.Time,
 		XUserID:     &xUserID,
 		Username:    author.Username,
 		DisplayName: author.DisplayName,
-		AvatarURL:   author.AvatarURL,
+		AvatarURL:   highResolutionXAvatarURL(author.AvatarURL),
 		CreatedAt:   createdAt.UTC(),
 		UpdatedAt:   createdAt.UTC(),
 	}
@@ -294,10 +299,14 @@ func (e *Engagement) listComments(ctx context.Context, articleID int64, viewerXU
 }
 
 func stickerFromRow(row dbSticker) Sticker {
+	value := row.Value
+	if row.Kind == KindAvatar {
+		value = highResolutionXAvatarURL(value)
+	}
 	return Sticker{
 		ID:          row.ID,
 		Kind:        row.Kind,
-		Value:       row.Value,
+		Value:       value,
 		X:           row.X,
 		Y:           row.Y,
 		Username:    row.Username,
@@ -312,7 +321,7 @@ func commentFromRow(row dbComment, viewerXUserID string) Comment {
 		Body:        row.Body,
 		Username:    row.Username,
 		DisplayName: row.DisplayName,
-		AvatarURL:   row.AvatarURL,
+		AvatarURL:   highResolutionXAvatarURL(row.AvatarURL),
 		CreatedAt:   row.CreatedAt,
 	}
 	if viewerXUserID != "" && row.XUserID != nil && *row.XUserID == viewerXUserID {
@@ -328,7 +337,7 @@ func adminCommentFromRow(row dbComment) AdminComment {
 		Status:      row.Status,
 		Username:    row.Username,
 		DisplayName: row.DisplayName,
-		AvatarURL:   row.AvatarURL,
+		AvatarURL:   highResolutionXAvatarURL(row.AvatarURL),
 		CreatedAt:   row.CreatedAt,
 	}
 }

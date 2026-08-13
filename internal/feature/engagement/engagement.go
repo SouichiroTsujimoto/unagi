@@ -3,6 +3,8 @@ package engagement
 import (
 	"errors"
 	"fmt"
+	"net/url"
+	"path"
 	"strings"
 	"time"
 	"unicode/utf8"
@@ -185,4 +187,22 @@ func normalizeCommentBody(body string) (string, error) {
 		return "", fmt.Errorf("%w: body too long", ErrInvalidInput)
 	}
 	return body, nil
+}
+
+func highResolutionXAvatarURL(raw string) string {
+	avatarURL := strings.TrimSpace(raw)
+	parsed, err := url.Parse(avatarURL)
+	if err != nil ||
+		!strings.EqualFold(parsed.Hostname(), "pbs.twimg.com") ||
+		!strings.HasPrefix(parsed.Path, "/profile_images/") {
+		return avatarURL
+	}
+
+	ext := path.Ext(parsed.Path)
+	base := strings.TrimSuffix(parsed.Path, ext)
+	if !strings.HasSuffix(base, "_normal") {
+		return avatarURL
+	}
+	parsed.Path = strings.TrimSuffix(base, "_normal") + "_400x400" + ext
+	return parsed.String()
 }

@@ -48,6 +48,44 @@ func testAuthor(id string) Author {
 	}
 }
 
+func TestHighResolutionXAvatarURL(t *testing.T) {
+	t.Parallel()
+	tests := []struct {
+		name string
+		raw  string
+		want string
+	}{
+		{
+			name: "normal profile image",
+			raw:  "https://pbs.twimg.com/profile_images/123/avatar_normal.jpg",
+			want: "https://pbs.twimg.com/profile_images/123/avatar_400x400.jpg",
+		},
+		{
+			name: "query preserved",
+			raw:  "https://pbs.twimg.com/profile_images/123/avatar_normal.jpg?format=jpg",
+			want: "https://pbs.twimg.com/profile_images/123/avatar_400x400.jpg?format=jpg",
+		},
+		{
+			name: "already high resolution",
+			raw:  "https://pbs.twimg.com/profile_images/123/avatar_400x400.jpg",
+			want: "https://pbs.twimg.com/profile_images/123/avatar_400x400.jpg",
+		},
+		{
+			name: "other host",
+			raw:  "https://example.com/avatar_normal.jpg",
+			want: "https://example.com/avatar_normal.jpg",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			if got := highResolutionXAvatarURL(tt.raw); got != tt.want {
+				t.Fatalf("highResolutionXAvatarURL() = %q, want %q", got, tt.want)
+			}
+		})
+	}
+}
+
 func TestGetSnapshotAndAddEmoji(t *testing.T) {
 	t.Parallel()
 	eng, articles := openTestEngagement(t)
@@ -159,6 +197,8 @@ func TestAddAvatarAndComment(t *testing.T) {
 	ctx := context.Background()
 	now := time.Now()
 	author := testAuthor("42")
+	author.AvatarURL = "https://pbs.twimg.com/profile_images/123/avatar_normal.jpg"
+	wantAvatarURL := "https://pbs.twimg.com/profile_images/123/avatar_400x400.jpg"
 
 	_, err := eng.AddAvatarSticker(ctx, "hello", now, Author{}, 0.5, 0.5)
 	if !errors.Is(err, ErrLoginRequired) {
@@ -169,7 +209,7 @@ func TestAddAvatarAndComment(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if sticker.Kind != KindAvatar || sticker.Value != author.AvatarURL || sticker.Username != "wuhu" {
+	if sticker.Kind != KindAvatar || sticker.Value != wantAvatarURL || sticker.Username != "wuhu" {
 		t.Fatalf("sticker=%+v", sticker)
 	}
 
@@ -181,16 +221,20 @@ func TestAddAvatarAndComment(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if comment.Body != "nice post" || comment.Username != "wuhu" {
+	if comment.Body != "nice post" || comment.Username != "wuhu" || comment.AvatarURL != wantAvatarURL {
 		t.Fatalf("comment=%+v", comment)
 	}
 
-	snap, err := eng.GetSnapshot(ctx, "hello", now, nil)
+	viewer := &Viewer{AvatarURL: author.AvatarURL, XUserID: author.XUserID}
+	snap, err := eng.GetSnapshot(ctx, "hello", now, viewer)
 	if err != nil {
 		t.Fatal(err)
 	}
 	if len(snap.Stickers) != 1 || len(snap.Comments) != 1 {
 		t.Fatalf("snap=%+v", snap)
+	}
+	if snap.Viewer == nil || snap.Viewer.AvatarURL != wantAvatarURL {
+		t.Fatalf("viewer=%+v", snap.Viewer)
 	}
 }
 
