@@ -24,7 +24,7 @@ import (
 const (
 	Width           = 1200
 	Height          = 630
-	RendererVersion = 6
+	RendererVersion = 7
 	renderScale     = 2
 )
 
@@ -179,18 +179,72 @@ func (images *Images) fitTitle(title string, maxWidth, scale int) (font.Face, []
 func wrap(face font.Face, text string, maxWidth int) []string {
 	var lines []string
 	var current strings.Builder
-	for _, r := range text {
-		candidate := current.String() + string(r)
+	for _, token := range wrapTokens(text) {
+		if strings.TrimSpace(token) == "" {
+			if current.Len() > 0 {
+				current.WriteString(token)
+			}
+			continue
+		}
+		candidate := current.String() + token
 		if current.Len() > 0 && font.MeasureString(face, candidate).Ceil() > maxWidth {
 			lines = append(lines, strings.TrimSpace(current.String()))
 			current.Reset()
 		}
-		current.WriteRune(r)
+		if font.MeasureString(face, token).Ceil() <= maxWidth {
+			current.WriteString(token)
+			continue
+		}
+		for _, r := range token {
+			candidate = current.String() + string(r)
+			if current.Len() > 0 && font.MeasureString(face, candidate).Ceil() > maxWidth {
+				lines = append(lines, strings.TrimSpace(current.String()))
+				current.Reset()
+			}
+			current.WriteRune(r)
+		}
 	}
 	if current.Len() > 0 {
 		lines = append(lines, strings.TrimSpace(current.String()))
 	}
 	return lines
+}
+
+func wrapTokens(text string) []string {
+	var tokens []string
+	var current strings.Builder
+	var currentKind byte
+	flush := func() {
+		if current.Len() == 0 {
+			return
+		}
+		tokens = append(tokens, current.String())
+		current.Reset()
+	}
+	for _, r := range text {
+		var kind byte
+		switch {
+		case r == ' ' || r == '\t' || r == '\n' || r == '\r':
+			kind = 's'
+		case r >= 0x21 && r <= 0x7e:
+			kind = 'a'
+		default:
+			kind = 'r'
+		}
+		if kind == 'r' {
+			flush()
+			tokens = append(tokens, string(r))
+			currentKind = 0
+			continue
+		}
+		if currentKind != 0 && currentKind != kind {
+			flush()
+		}
+		currentKind = kind
+		current.WriteRune(r)
+	}
+	flush()
+	return tokens
 }
 
 func truncate(face font.Face, text string, maxWidth int) string {

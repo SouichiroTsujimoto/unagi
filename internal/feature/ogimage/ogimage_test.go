@@ -9,6 +9,7 @@ import (
 
 	"github.com/SouichiroTsujimoto/unagi/internal/braille"
 	"github.com/SouichiroTsujimoto/unagi/internal/feature/article"
+	"golang.org/x/image/font"
 )
 
 func TestRenderPNG(t *testing.T) {
@@ -38,7 +39,7 @@ func TestRenderPNG(t *testing.T) {
 	if config.Width != Width || config.Height != Height {
 		t.Fatalf("dimensions=%dx%d", config.Width, config.Height)
 	}
-	if got := Path(item); got != "/og/articles/hello-unagi/12-3-6.png" {
+	if got := Path(item); got != "/og/articles/hello-unagi/12-3-7.png" {
 		t.Fatalf("path=%q", got)
 	}
 	if len(body) > 1_000_000 {
@@ -81,6 +82,31 @@ func TestRenderVeryLongTitle(t *testing.T) {
 	}
 	if _, err := images.RenderPNG(item); err != nil {
 		t.Fatal(err)
+	}
+}
+
+func TestWrapKeepsASCIIWordsTogether(t *testing.T) {
+	images, err := New()
+	if err != nil {
+		t.Fatal(err)
+	}
+	face, err := images.face(44)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer face.Close()
+
+	const prefix = "Vercel Go Runtime +"
+	maxWidth := font.MeasureString(face, prefix+" Supa").Ceil()
+	lines := wrap(face, "Vercel Go Runtime + Supabaseで、技術ブログを無料で動かす", maxWidth)
+	if len(lines) < 2 {
+		t.Fatalf("lines=%q", lines)
+	}
+	if lines[0] != prefix {
+		t.Fatalf("first line=%q want %q", lines[0], prefix)
+	}
+	if !strings.HasPrefix(lines[1], "Supabase") {
+		t.Fatalf("second line split Supabase: %q", lines[1])
 	}
 }
 
