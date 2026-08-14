@@ -229,7 +229,6 @@ function ArticleEngagement(props) {
       });
       setStickers((prev) => [...prev, created]);
       setPalette(null);
-      setBoardMessage("ステッカーを貼りました");
     } catch (err) {
       setBoardMessage(err.message || String(err));
     } finally {
@@ -321,8 +320,8 @@ function ArticleEngagement(props) {
 
   return html`
     <section class="engagement space-y-10" aria-label="記事への反応">
-      <section class="engagement-board-section space-y-4" aria-labelledby="engagement-board-title">
-        <header class="space-y-1">
+      <section class="engagement-board-section" aria-labelledby="engagement-board-title">
+        <header class="engagement-board-copy space-y-1">
           <h2 id="engagement-board-title" class="text-base font-semibold tracking-tight">ステッカーボード</h2>
           <p class="text-base-content/55 text-sm leading-relaxed">
             ボードをクリックしてステッカーを貼りましょう！Xアカウントでログインすると、自分のアイコンのステッカーを残せます。
@@ -452,18 +451,20 @@ function ArticleEngagement(props) {
             : null}
         </div>
 
-        ${authenticated && linkedLabel
-          ? html`
-              <div class="flex flex-wrap items-center gap-3 text-sm text-base-content/55">
+        <div class="engagement-board-account text-sm text-base-content/55">
+          ${authenticated && linkedLabel
+            ? html`
+              <div class="flex flex-wrap items-center gap-3">
                 <p>${linkedLabel}</p>
                 <a class="link link-hover" href=${logoutHref(logoutPath)}>ログアウト</a>
               </div>
-            `
-          : null}
-        <p class="text-sm text-base-content/55" aria-live="polite">${boardMessage}</p>
-        ${loadError
-          ? html`<p class="text-sm text-error" role="alert">${loadError}</p>`
-          : null}
+              `
+            : null}
+        </div>
+        <div class="engagement-board-feedback text-sm" aria-live="polite">
+          ${boardMessage ? html`<p class="text-base-content/55">${boardMessage}</p>` : null}
+          ${loadError ? html`<p class="text-error" role="alert">${loadError}</p>` : null}
+        </div>
       </section>
 
       <section class="engagement-comments space-y-4" aria-labelledby="engagement-comments-title">
